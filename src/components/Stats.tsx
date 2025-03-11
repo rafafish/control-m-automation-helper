@@ -14,7 +14,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
   const [chartType, setChartType] = useState<'line' | 'bar' | 'pie'>('line');
   
-  // Dados simulados para falhas de jobs
+  // Simulated data for job failures
   const dailyData = [
     { name: '00:00', failed: 2, application: 'Finance' },
     { name: '03:00', failed: 1, application: 'IT' },
@@ -27,20 +27,20 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
   ];
   
   const weeklyData = [
-    { name: 'Segunda', failed: 8, application: 'Finance' },
-    { name: 'Terça', failed: 5, application: 'IT' },
-    { name: 'Quarta', failed: 10, application: 'HR' },
-    { name: 'Quinta', failed: 7, application: 'Sales' },
-    { name: 'Sexta', failed: 12, application: 'Finance' },
-    { name: 'Sábado', failed: 3, application: 'IT' },
-    { name: 'Domingo', failed: 1, application: 'HR' },
+    { name: 'Monday', failed: 8, application: 'Finance' },
+    { name: 'Tuesday', failed: 5, application: 'IT' },
+    { name: 'Wednesday', failed: 10, application: 'HR' },
+    { name: 'Thursday', failed: 7, application: 'Sales' },
+    { name: 'Friday', failed: 12, application: 'Finance' },
+    { name: 'Saturday', failed: 3, application: 'IT' },
+    { name: 'Sunday', failed: 1, application: 'HR' },
   ];
   
   const monthlyData = [
-    { name: 'Semana 1', failed: 25, application: 'Finance' },
-    { name: 'Semana 2', failed: 18, application: 'IT' },
-    { name: 'Semana 3', failed: 32, application: 'HR' },
-    { name: 'Semana 4', failed: 15, application: 'Sales' },
+    { name: 'Week 1', failed: 25, application: 'Finance' },
+    { name: 'Week 2', failed: 18, application: 'IT' },
+    { name: 'Week 3', failed: 32, application: 'HR' },
+    { name: 'Week 4', failed: 15, application: 'Sales' },
   ];
   
   const applicationData = [
@@ -78,7 +78,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Line type="monotone" dataKey="failed" stroke="#ef4444" name="Falhas" />
+        <Line type="monotone" dataKey="failed" stroke="#ef4444" name="Failures" />
       </LineChart>
     );
   };
@@ -92,7 +92,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="failed" fill="#ef4444" name="Falhas" />
+        <Bar dataKey="failed" fill="#ef4444" name="Failures" />
       </BarChart>
     );
   };
@@ -101,7 +101,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-lg font-medium mb-2 text-center">Falhas por Application</h3>
+          <h3 className="text-lg font-medium mb-2 text-center">Failures by Application</h3>
           <PieChart width={400} height={300}>
             <Pie
               data={applicationData}
@@ -121,7 +121,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
           </PieChart>
         </div>
         <div>
-          <h3 className="text-lg font-medium mb-2 text-center">Falhas por Folder</h3>
+          <h3 className="text-lg font-medium mb-2 text-center">Failures by Folder</h3>
           <PieChart width={400} height={300}>
             <Pie
               data={folderData}
@@ -160,7 +160,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
   return (
     <Card className="p-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
-        <h2 className="text-2xl font-semibold mb-2 md:mb-0">Estatísticas de Falhas</h2>
+        <h2 className="text-2xl font-semibold mb-2 md:mb-0">Failure Statistics</h2>
         <div className="flex space-x-2">
           <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-1 flex">
             <Button
@@ -170,7 +170,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
               className="rounded-lg"
             >
               <Calendar className="h-4 w-4 mr-1" />
-              Dia
+              Day
             </Button>
             <Button
               variant={viewMode === 'week' ? 'default' : 'ghost'}
@@ -179,7 +179,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
               className="rounded-lg"
             >
               <Calendar className="h-4 w-4 mr-1" />
-              Semana
+              Week
             </Button>
             <Button
               variant={viewMode === 'month' ? 'default' : 'ghost'}
@@ -188,7 +188,7 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
               className="rounded-lg"
             >
               <Calendar className="h-4 w-4 mr-1" />
-              Mês
+              Month
             </Button>
           </div>
           <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-1 flex">
@@ -224,19 +224,19 @@ export default function Stats({ endpoint, apiKey }: StatsProps) {
       </div>
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <h3 className="font-medium text-red-700 dark:text-red-400">Total de falhas hoje</h3>
+          <h3 className="font-medium text-red-700 dark:text-red-400">Total failures today</h3>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">21</p>
-          <p className="text-sm text-red-600 dark:text-red-400">+5 desde ontem</p>
+          <p className="text-sm text-red-600 dark:text-red-400">+5 since yesterday</p>
         </Card>
         <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-          <h3 className="font-medium text-blue-700 dark:text-blue-400">Application mais problemática</h3>
+          <h3 className="font-medium text-blue-700 dark:text-blue-400">Most problematic application</h3>
           <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">Finance</p>
-          <p className="text-sm text-blue-600 dark:text-blue-400">45% das falhas</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400">45% of failures</p>
         </Card>
         <Card className="p-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-          <h3 className="font-medium text-green-700 dark:text-green-400">Jobs corrigidos hoje</h3>
+          <h3 className="font-medium text-green-700 dark:text-green-400">Jobs fixed today</h3>
           <p className="text-3xl font-bold text-green-600 dark:text-green-400">15</p>
-          <p className="text-sm text-green-600 dark:text-green-400">71% resolvidos</p>
+          <p className="text-sm text-green-600 dark:text-green-400">71% resolved</p>
         </Card>
       </div>
     </Card>

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import JobsMonitor from '@/components/JobsMonitor';
-import WorkflowEditor from '@/components/WorkflowEditor';
 import Stats from '@/components/Stats';
 
 export default function Index() {
@@ -18,24 +17,24 @@ export default function Index() {
   const handleConnect = async () => {
     if (!apiEndpoint || !apiKey) {
       toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos",
+        title: "Error",
+        description: "Please fill in all fields",
         variant: "destructive",
       });
       return;
     }
 
-    // Aqui você implementaria a lógica de conexão real com a API
+    // Here you would implement the actual connection logic to the API
     try {
       setIsConnected(true);
       toast({
-        title: "Sucesso",
-        description: "Conectado com sucesso ao Control-M",
+        title: "Success",
+        description: "Successfully connected to Control-M",
       });
     } catch (error) {
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao Control-M",
+        title: "Connection error",
+        description: "Could not connect to Control-M",
         variant: "destructive",
       });
     }
@@ -49,7 +48,7 @@ export default function Index() {
             Control-M Automation
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Gerencie seus workloads com simplicidade e eficiência
+            Manage your workloads with simplicity and efficiency
           </p>
         </div>
 
@@ -62,7 +61,7 @@ export default function Index() {
                 </label>
                 <Input
                   id="endpoint"
-                  placeholder="https://seu-control-m.empresa.com/automation-api"
+                  placeholder="https://your-control-m.company.com/automation-api"
                   value={apiEndpoint}
                   onChange={(e) => setApiEndpoint(e.target.value)}
                   className="w-full"
@@ -75,29 +74,25 @@ export default function Index() {
                 <Input
                   id="apiKey"
                   type="password"
-                  placeholder="Sua API key"
+                  placeholder="Your API key"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="w-full"
                 />
               </div>
               <Button onClick={handleConnect} className="w-full">
-                Conectar
+                Connect
               </Button>
             </div>
           </Card>
         ) : (
           <Tabs defaultValue="monitor" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="monitor">Monitor de Jobs</TabsTrigger>
-              <TabsTrigger value="workflow">Editor de Workflow</TabsTrigger>
-              <TabsTrigger value="stats">Estatísticas</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="monitor">Job Monitor</TabsTrigger>
+              <TabsTrigger value="stats">Statistics</TabsTrigger>
             </TabsList>
             <TabsContent value="monitor">
               <JobsMonitor endpoint={apiEndpoint} apiKey={apiKey} />
-            </TabsContent>
-            <TabsContent value="workflow">
-              <WorkflowEditor endpoint={apiEndpoint} apiKey={apiKey} />
             </TabsContent>
             <TabsContent value="stats">
               <Stats endpoint={apiEndpoint} apiKey={apiKey} />

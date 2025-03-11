@@ -43,10 +43,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   });
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const { toast } = useToast();
-  const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minuto por padrão
+  const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
 
   useEffect(() => {
-    // Simulação de dados - em produção, você faria a chamada real à API do Control-M
+    // Simulation of data - in production, you would make a real call to the Control-M API
     const mockJobs: Job[] = [
       { 
         id: '1', 
@@ -97,7 +97,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     setFilteredJobs(failed);
   }, []);
 
-  // Adicionar a lógica para atualizar periodicamente
+  // Add logic to update periodically
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchFailedJobs();
@@ -107,8 +107,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   }, [refreshInterval]);
 
   const fetchFailedJobs = () => {
-    // Aqui você implementaria a chamada real à API Control-M
-    // Por enquanto, vamos simular adicionando um novo job aleatório com falha
+    // Here you would implement the real call to the Control-M API
+    // For now, let's simulate adding a new random failed job
 
     const newJob: Job = { 
       id: Date.now().toString(), 
@@ -126,8 +126,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     applyFilters([...failedJobs, newJob]);
     
     toast({
-      title: "Novo job com falha detectado",
-      description: `${newJob.name} falhou com erro: ${newJob.errorMessage}`,
+      title: "New failed job detected",
+      description: `${newJob.name} failed with error: ${newJob.errorMessage}`,
       variant: "destructive",
     });
   };
@@ -162,7 +162,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
     
-    // Aplicar os novos filtros imediatamente
+    // Apply the new filters immediately
     let result = failedJobs;
     
     if (newFilters.name) {
@@ -204,8 +204,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     applyFilters();
     
     toast({
-      title: "Comentário salvo",
-      description: `Comentário para ${selectedJob.name} foi salvo com sucesso`,
+      title: "Comment saved",
+      description: `Comment for ${selectedJob.name} has been saved successfully`,
     });
   };
 
@@ -224,8 +224,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     applyFilters();
     
     toast({
-      title: "Status atualizado",
-      description: `${updatedJob.name} marcado como "Em verificação"`,
+      title: "Status updated",
+      description: `${updatedJob.name} marked as "Being checked"`,
     });
   };
 
@@ -244,16 +244,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     applyFilters();
     
     toast({
-      title: "Status atualizado",
-      description: `${updatedJob.name} marcado como "Corrigido"`,
+      title: "Status updated",
+      description: `${updatedJob.name} marked as "Fixed"`,
     });
   };
 
   const refreshJobs = () => {
     fetchFailedJobs();
     toast({
-      title: "Atualizando jobs",
-      description: "Buscando jobs com falha...",
+      title: "Refreshing jobs",
+      description: "Fetching failed jobs...",
     });
   };
 
@@ -261,10 +261,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Card className="p-6 lg:col-span-2">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">Monitor de Jobs com Falha</h2>
+          <h2 className="text-2xl font-semibold">Failed Jobs Monitor</h2>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={refreshJobs}>
-              <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
           </div>
         </div>
@@ -273,10 +273,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           <div>
             <div className="flex items-center mb-1">
               <Search className="h-4 w-4 mr-1 text-gray-500" />
-              <label className="text-sm font-medium">Nome do Job</label>
+              <label className="text-sm font-medium">Job Name</label>
             </div>
             <Input 
-              placeholder="Filtrar por nome" 
+              placeholder="Filter by name" 
               value={filters.name}
               onChange={(e) => handleFilterChange('name', e.target.value)}
             />
@@ -287,7 +287,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               <label className="text-sm font-medium">Application</label>
             </div>
             <Input 
-              placeholder="Filtrar por application" 
+              placeholder="Filter by application" 
               value={filters.application}
               onChange={(e) => handleFilterChange('application', e.target.value)}
             />
@@ -298,7 +298,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               <label className="text-sm font-medium">SubApplication</label>
             </div>
             <Input 
-              placeholder="Filtrar por subApplication" 
+              placeholder="Filter by subApplication" 
               value={filters.subApplication}
               onChange={(e) => handleFilterChange('subApplication', e.target.value)}
             />
@@ -309,7 +309,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               <label className="text-sm font-medium">Folder</label>
             </div>
             <Input 
-              placeholder="Filtrar por folder" 
+              placeholder="Filter by folder" 
               value={filters.folder}
               onChange={(e) => handleFilterChange('folder', e.target.value)}
             />
@@ -323,10 +323,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
             className="mr-2"
           >
-            {filters.showFixed ? "Esconder Corrigidos" : "Mostrar Corrigidos"}
+            {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
           </Button>
           <span className="text-sm text-gray-500">
-            Mostrando {filteredJobs.length} de {failedJobs.length} jobs com falha
+            Showing {filteredJobs.length} of {failedJobs.length} failed jobs
           </span>
         </div>
         
@@ -352,41 +352,41 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     <Badge variant="destructive">
-                      FALHA
+                      FAILED
                     </Badge>
                     {job.isBeingChecked && (
                       <Badge variant="secondary">
-                        <Clock className="h-3 w-3 mr-1" /> Em verificação
+                        <Clock className="h-3 w-3 mr-1" /> Being checked
                       </Badge>
                     )}
                     {job.isFixed && (
                       <Badge variant="default">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Corrigido
+                        <CheckCircle className="h-3 w-3 mr-1" /> Fixed
                       </Badge>
                     )}
                   </div>
                 </div>
                 {job.startTime && (
                   <div className="mt-2 text-sm text-gray-500">
-                    <p>Início: {new Date(job.startTime).toLocaleString()}</p>
-                    {job.endTime && <p>Fim: {new Date(job.endTime).toLocaleString()}</p>}
+                    <p>Start: {new Date(job.startTime).toLocaleString()}</p>
+                    {job.endTime && <p>End: {new Date(job.endTime).toLocaleString()}</p>}
                   </div>
                 )}
                 {job.errorMessage && (
                   <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-md text-sm">
-                    <p className="font-medium text-red-600 dark:text-red-400">Erro:</p>
+                    <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
                     <p className="text-red-600 dark:text-red-400">{job.errorMessage}</p>
                   </div>
                 )}
                 {job.comment && (
                   <div className="mt-2">
-                    <p className="text-sm font-medium">Comentário:</p>
+                    <p className="text-sm font-medium">Comment:</p>
                     <p className="text-sm">{job.comment}</p>
                   </div>
                 )}
                 {job.solution && (
                   <div className="mt-2">
-                    <p className="text-sm font-medium">Solução:</p>
+                    <p className="text-sm font-medium">Solution:</p>
                     <p className="text-sm">{job.solution}</p>
                   </div>
                 )}
@@ -394,7 +394,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             ))}
             {filteredJobs.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                Nenhum job com falha encontrado com os filtros aplicados.
+                No failed jobs found with the applied filters.
               </div>
             )}
           </div>
@@ -402,7 +402,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       </Card>
       
       <Card className="p-6">
-        <h2 className="text-2xl font-semibold mb-4">Detalhes do Job</h2>
+        <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
         {selectedJob ? (
           <div className="space-y-4">
             <div>
@@ -421,17 +421,17 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             
             {selectedJob.errorMessage && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
-                <p className="font-medium text-red-600 dark:text-red-400">Erro:</p>
+                <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
                 <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
               </div>
             )}
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Comentário
+                Comment
               </label>
               <Textarea
-                placeholder="Adicione um comentário sobre o erro"
+                placeholder="Add a comment about the error"
                 value={selectedJob.comment || ''}
                 onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
                 className="mb-2"
@@ -440,10 +440,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Solução
+                Solution
               </label>
               <Textarea
-                placeholder="Descreva a solução aplicada"
+                placeholder="Describe the applied solution"
                 value={selectedJob.solution || ''}
                 onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
                 className="mb-4"
@@ -457,24 +457,24 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   onClick={markAsChecking}
                 >
                   <Clock className="h-4 w-4 mr-1" />
-                  {selectedJob.isBeingChecked ? "Em verificação" : "Marcar em verificação"}
+                  {selectedJob.isBeingChecked ? "Being checked" : "Mark as checking"}
                 </Button>
                 <Button
                   variant={selectedJob.isFixed ? "default" : "outline"}
                   onClick={markAsFixed}
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  {selectedJob.isFixed ? "Corrigido" : "Marcar como corrigido"}
+                  {selectedJob.isFixed ? "Fixed" : "Mark as fixed"}
                 </Button>
               </div>
               <Button onClick={saveComment}>
-                Salvar
+                Save
               </Button>
             </div>
           </div>
         ) : (
           <div className="text-center py-10 text-gray-500">
-            Selecione um job para ver os detalhes
+            Select a job to view details
           </div>
         )}
       </Card>
