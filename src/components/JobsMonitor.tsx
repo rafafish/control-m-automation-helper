@@ -7,7 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Filter, CheckCircle, Clock, RefreshCw, Search } from "lucide-react";
+import { 
+  Filter, 
+  CheckCircle, 
+  Clock, 
+  RefreshCw, 
+  Search, 
+  Calendar as CalendarIcon,
+  FileSpreadsheet
+} from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
 
 interface Job {
   id: string;
@@ -40,10 +57,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     subApplication: '',
     folder: '',
     showFixed: false,
+    todayOnly: false,
   });
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     // Simulation of data - in production, you would make a real call to the Control-M API
@@ -88,6 +107,17 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         folder: 'Daily_Jobs', 
         startTime: new Date().toISOString(),
         errorMessage: 'Failed to connect to remote server'
+      },
+      // Add a job from yesterday for testing
+      { 
+        id: '5', 
+        name: 'Yesterday_Job', 
+        status: 'failed', 
+        application: 'Finance', 
+        subApplication: 'Reporting', 
+        folder: 'Daily_Jobs', 
+        startTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+        errorMessage: 'Data validation error'
       },
     ];
     
@@ -155,14 +185,41 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => !job.isFixed);
     }
     
+    // Apply date filters
+    if (filters.todayOnly) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      result = result.filter(job => {
+        if (!job.startTime) return false;
+        const jobDate = new Date(job.startTime);
+        return jobDate >= today;
+      });
+    } else if (selectedDate) {
+      const filterDate = new Date(selectedDate);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(filterDate.getDate() + 1);
+      
+      result = result.filter(job => {
+        if (!job.startTime) return false;
+        const jobDate = new Date(job.startTime);
+        return jobDate >= filterDate && jobDate < nextDay;
+      });
+    }
+    
     setFilteredJobs(result);
   };
 
   const handleFilterChange = (field: string, value: string | boolean) => {
+    // If toggling "Today Only", reset the calendar date
+    if (field === 'todayOnly' && value === true) {
+      setSelectedDate(undefined);
+    }
+    
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
     
-    // Apply the new filters immediately
+    // Apply the new filters
     let result = failedJobs;
     
     if (newFilters.name) {
@@ -185,7 +242,41 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => !job.isFixed);
     }
     
+    // Apply date filters
+    if (newFilters.todayOnly) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      result = result.filter(job => {
+        if (!job.startTime) return false;
+        const jobDate = new Date(job.startTime);
+        return jobDate >= today;
+      });
+    } else if (selectedDate) {
+      const filterDate = new Date(selectedDate);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(filterDate.getDate() + 1);
+      
+      result = result.filter(job => {
+        if (!job.startTime) return false;
+        const jobDate = new Date(job.startTime);
+        return jobDate >= filterDate && jobDate < nextDay;
+      });
+    }
+    
     setFilteredJobs(result);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    
+    // If a date is selected, turn off "Today Only" filter
+    if (date) {
+      setFilters(prev => ({...prev, todayOnly: false}));
+    }
+    
+    // Re-apply all filters with the new date
+    applyFilters();
   };
 
   const handleJobClick = (job: Job) => {
@@ -256,6 +347,44 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       description: "Fetching failed jobs...",
     });
   };
+  
+  const exportToExcel = () => {
+    // Create a worksheet with the filtered jobs data
+    const worksheet = XLSX.utils.json_to_sheet(
+      filteredJobs.map(job => ({
+        ID: job.id,
+        Name: job.name,
+        Status: job.status,
+        Application: job.application || 'N/A',
+        SubApplication: job.subApplication || 'N/A',
+        Folder: job.folder || 'N/A',
+        StartTime: job.startTime ? new Date(job.startTime).toLocaleString() : 'N/A',
+        EndTime: job.endTime ? new Date(job.endTime).toLocaleString() : 'N/A',
+        Error: job.errorMessage || 'N/A',
+        Comment: job.comment || 'N/A',
+        Solution: job.solution || 'N/A',
+        Status: job.isFixed ? 'Fixed' : (job.isBeingChecked ? 'Being checked' : 'Failed')
+      }))
+    );
+    
+    // Create a workbook and add the worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Failed Jobs');
+    
+    // Generate the Excel file
+    const dateStr = selectedDate 
+      ? format(selectedDate, 'yyyy-MM-dd')
+      : filters.todayOnly 
+        ? format(new Date(), 'yyyy-MM-dd') 
+        : 'all-dates';
+    
+    XLSX.writeFile(workbook, `control-m-failed-jobs-${dateStr}.xlsx`);
+    
+    toast({
+      title: "Export successful",
+      description: "Failed jobs exported to Excel",
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -265,6 +394,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={refreshJobs}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToExcel}
+              className="flex items-center"
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
             </Button>
           </div>
         </div>
@@ -316,7 +453,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           </div>
         </div>
         
-        <div className="flex items-center mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <Button 
             variant={filters.showFixed ? "default" : "outline"} 
             size="sm"
@@ -325,6 +462,42 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           >
             {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
           </Button>
+          
+          <Button 
+            variant={filters.todayOnly ? "default" : "outline"} 
+            size="sm"
+            onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
+            className="mr-2"
+          >
+            <CalendarIcon className="h-4 w-4 mr-1" />
+            {filters.todayOnly ? "All Dates" : "Today Only"}
+          </Button>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={selectedDate ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "mr-2",
+                  selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+              >
+                <CalendarIcon className="h-4 w-4 mr-1" />
+                {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          
           <span className="text-sm text-gray-500">
             Showing {filteredJobs.length} of {failedJobs.length} failed jobs
           </span>
