@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +23,6 @@ export default function Index() {
       return;
     }
 
-    // Here you would implement the actual connection logic to the API
     try {
       setIsConnected(true);
       toast({
@@ -45,11 +43,8 @@ export default function Index() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold tracking-tighter text-gray-900 dark:text-gray-50 sm:text-5xl md:text-6xl">
-            Control-M Automation
+            TB Failure Tracking
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Manage your workloads with simplicity and efficiency
-          </p>
         </div>
 
         {!isConnected ? (

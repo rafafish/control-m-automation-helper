@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +64,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
-    // Simulation of data - in production, you would make a real call to the Control-M API
     const mockJobs: Job[] = [
       { 
         id: '1', 
@@ -108,7 +106,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         startTime: new Date().toISOString(),
         errorMessage: 'Failed to connect to remote server'
       },
-      // Add a job from yesterday for testing
       { 
         id: '5', 
         name: 'Yesterday_Job', 
@@ -127,7 +124,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     setFilteredJobs(failed);
   }, []);
 
-  // Add logic to update periodically
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchFailedJobs();
@@ -137,9 +133,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   }, [refreshInterval]);
 
   const fetchFailedJobs = () => {
-    // Here you would implement the real call to the Control-M API
-    // For now, let's simulate adding a new random failed job
-
     const newJob: Job = { 
       id: Date.now().toString(), 
       name: `Job_${Math.floor(Math.random() * 1000)}`, 
@@ -185,7 +178,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => !job.isFixed);
     }
     
-    // Apply date filters
     if (filters.todayOnly) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -211,7 +203,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const handleFilterChange = (field: string, value: string | boolean) => {
-    // If toggling "Today Only", reset the calendar date
     if (field === 'todayOnly' && value === true) {
       setSelectedDate(undefined);
     }
@@ -219,7 +210,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
     
-    // Apply the new filters
     let result = failedJobs;
     
     if (newFilters.name) {
@@ -242,7 +232,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => !job.isFixed);
     }
     
-    // Apply date filters
     if (newFilters.todayOnly) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -270,12 +259,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
     
-    // If a date is selected, turn off "Today Only" filter
     if (date) {
       setFilters(prev => ({...prev, todayOnly: false}));
     }
     
-    // Re-apply all filters with the new date
     applyFilters();
   };
 
@@ -349,7 +336,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
   
   const exportToExcel = () => {
-    // Create a worksheet with the filtered jobs data
     const worksheet = XLSX.utils.json_to_sheet(
       filteredJobs.map(job => ({
         ID: job.id,
@@ -363,15 +349,13 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         Error: job.errorMessage || 'N/A',
         Comment: job.comment || 'N/A',
         Solution: job.solution || 'N/A',
-        Status: job.isFixed ? 'Fixed' : (job.isBeingChecked ? 'Being checked' : 'Failed')
+        JobStatus: job.isFixed ? 'Fixed' : (job.isBeingChecked ? 'Being checked' : 'Failed')
       }))
     );
     
-    // Create a workbook and add the worksheet
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Failed Jobs');
     
-    // Generate the Excel file
     const dateStr = selectedDate 
       ? format(selectedDate, 'yyyy-MM-dd')
       : filters.todayOnly 
