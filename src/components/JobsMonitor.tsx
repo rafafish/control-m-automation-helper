@@ -494,6 +494,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 key={job.id} 
                 className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
                   selectedJob?.id === job.id ? 'ring-2 ring-primary' : ''
+                } ${
+                  job.isFixed ? 'border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20' : 
+                  job.isBeingChecked ? 'border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : ''
                 }`}
                 onClick={() => handleJobClick(job)}
               >
@@ -512,12 +515,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                       FAILED
                     </Badge>
                     {job.isBeingChecked && (
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
                         <Clock className="h-3 w-3 mr-1" /> Being checked
                       </Badge>
                     )}
                     {job.isFixed && (
-                      <Badge variant="default">
+                      <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
                         <CheckCircle className="h-3 w-3 mr-1" /> Fixed
                       </Badge>
                     )}
@@ -612,6 +615,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 <Button
                   variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
                   onClick={markAsChecking}
+                  className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
                 >
                   <Clock className="h-4 w-4 mr-1" />
                   {selectedJob.isBeingChecked ? "Being checked" : "Mark as checking"}
@@ -619,6 +623,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 <Button
                   variant={selectedJob.isFixed ? "default" : "outline"}
                   onClick={markAsFixed}
+                  className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
                   {selectedJob.isFixed ? "Fixed" : "Mark as fixed"}
