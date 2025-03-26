@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Filter, 
   CheckCircle, 
@@ -59,6 +60,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     todayOnly: false,
   });
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
+  const [bulkComment, setBulkComment] = useState('');
+  const [bulkSolution, setBulkSolution] = useState('');
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -267,64 +271,134 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const handleJobClick = (job: Job) => {
-    setSelectedJob(job);
+    if (selectedJobs.length > 0) {
+      toggleJobSelection(job.id);
+    } else {
+      setSelectedJob(job);
+    }
   };
 
   const saveComment = () => {
-    if (!selectedJob) return;
+    if (!selectedJob && selectedJobs.length === 0) return;
     
-    setFailedJobs(prev => 
-      prev.map(job => 
-        job.id === selectedJob.id ? selectedJob : job
-      )
-    );
-    
-    applyFilters();
-    
-    toast({
-      title: "Comment saved",
-      description: `Comment for ${selectedJob.name} has been saved successfully`,
-    });
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFilters(updatedJobs);
+      
+      toast({
+        title: "Comentários salvos",
+        description: `Comentários atualizados para ${selectedJobs.length} jobs`,
+      });
+    } else if (selectedJob) {
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === selectedJob.id ? selectedJob : job
+        )
+      );
+      
+      applyFilters();
+      
+      toast({
+        title: "Comentário salvo",
+        description: `Comentário para ${selectedJob.name} foi salvo com sucesso`,
+      });
+    }
   };
 
   const markAsChecking = () => {
-    if (!selectedJob) return;
+    if (!selectedJob && selectedJobs.length === 0) return;
     
-    const updatedJob = { ...selectedJob, isBeingChecked: true };
-    setSelectedJob(updatedJob);
-    
-    setFailedJobs(prev => 
-      prev.map(job => 
-        job.id === updatedJob.id ? updatedJob : job
-      )
-    );
-    
-    applyFilters();
-    
-    toast({
-      title: "Status updated",
-      description: `${updatedJob.name} marked as "Being checked"`,
-    });
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            isBeingChecked: true,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFilters(updatedJobs);
+      
+      toast({
+        title: "Status atualizado",
+        description: `${selectedJobs.length} jobs marcados como "Sendo verificados"`,
+      });
+    } else if (selectedJob) {
+      const updatedJob = { ...selectedJob, isBeingChecked: true };
+      setSelectedJob(updatedJob);
+      
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === updatedJob.id ? updatedJob : job
+        )
+      );
+      
+      applyFilters();
+      
+      toast({
+        title: "Status atualizado",
+        description: `${updatedJob.name} marcado como "Sendo verificado"`,
+      });
+    }
   };
 
   const markAsFixed = () => {
-    if (!selectedJob) return;
+    if (!selectedJob && selectedJobs.length === 0) return;
     
-    const updatedJob = { ...selectedJob, isFixed: true, isBeingChecked: false };
-    setSelectedJob(updatedJob);
-    
-    setFailedJobs(prev => 
-      prev.map(job => 
-        job.id === updatedJob.id ? updatedJob : job
-      )
-    );
-    
-    applyFilters();
-    
-    toast({
-      title: "Status updated",
-      description: `${updatedJob.name} marked as "Fixed"`,
-    });
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            isFixed: true,
+            isBeingChecked: false,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFilters(updatedJobs);
+      
+      toast({
+        title: "Status atualizado",
+        description: `${selectedJobs.length} jobs marcados como "Corrigidos"`,
+      });
+    } else if (selectedJob) {
+      const updatedJob = { ...selectedJob, isFixed: true, isBeingChecked: false };
+      setSelectedJob(updatedJob);
+      
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === updatedJob.id ? updatedJob : job
+        )
+      );
+      
+      applyFilters();
+      
+      toast({
+        title: "Status atualizado",
+        description: `${updatedJob.name} marcado como "Corrigido"`,
+      });
+    }
   };
 
   const refreshJobs = () => {
@@ -368,6 +442,30 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       title: "Export successful",
       description: "Failed jobs exported to Excel",
     });
+  };
+
+  const toggleJobSelection = (jobId: string) => {
+    setSelectedJobs(prev => {
+      if (prev.includes(jobId)) {
+        return prev.filter(id => id !== jobId);
+      } else {
+        return [...prev, jobId];
+      }
+    });
+  };
+
+  const selectAllJobs = () => {
+    if (selectedJobs.length === filteredJobs.length) {
+      setSelectedJobs([]);
+    } else {
+      setSelectedJobs(filteredJobs.map(job => job.id));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedJobs([]);
+    setBulkComment('');
+    setBulkSolution('');
   };
 
   return (
@@ -482,9 +580,35 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             </PopoverContent>
           </Popover>
           
+          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="select-all" 
+                checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
+                onCheckedChange={selectAllJobs}
+              />
+              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                Selecionar todos
+              </label>
+            </div>
+            
+            {selectedJobs.length > 0 && (
+              <Button size="sm" variant="outline" onClick={clearSelection}>
+                Limpar seleção ({selectedJobs.length})
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-500">
             Showing {filteredJobs.length} of {failedJobs.length} failed jobs
           </span>
+          {selectedJobs.length > 0 && (
+            <span className="text-sm text-primary font-medium">
+              {selectedJobs.length} jobs selecionados
+            </span>
+          )}
         </div>
         
         <ScrollArea className="h-[500px] w-full">
@@ -501,13 +625,21 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 onClick={() => handleJobClick(job)}
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">{job.name}</h3>
-                    <div className="grid grid-cols-2 text-sm text-gray-500 mt-1">
-                      <p>Application: {job.application || 'N/A'}</p>
-                      <p>SubApplication: {job.subApplication || 'N/A'}</p>
-                      <p>Folder: {job.folder || 'N/A'}</p>
-                      <p>ID: {job.id}</p>
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      checked={selectedJobs.includes(job.id)}
+                      onCheckedChange={() => toggleJobSelection(job.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mr-2"
+                    />
+                    <div>
+                      <h3 className="font-medium">{job.name}</h3>
+                      <div className="grid grid-cols-2 text-sm text-gray-500 mt-1">
+                        <p>Application: {job.application || 'N/A'}</p>
+                        <p>SubApplication: {job.subApplication || 'N/A'}</p>
+                        <p>Folder: {job.folder || 'N/A'}</p>
+                        <p>ID: {job.id}</p>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
@@ -562,50 +694,30 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       </Card>
       
       <Card className="p-6">
-        <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
-        {selectedJob ? (
+        {selectedJobs.length > 0 ? (
           <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">{selectedJob.name}</h3>
-              <p className="text-sm text-gray-500">ID: {selectedJob.id}</p>
-              {selectedJob.application && (
-                <p className="text-sm text-gray-500">Application: {selectedJob.application}</p>
-              )}
-              {selectedJob.subApplication && (
-                <p className="text-sm text-gray-500">SubApplication: {selectedJob.subApplication}</p>
-              )}
-              {selectedJob.folder && (
-                <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
-              )}
-            </div>
-            
-            {selectedJob.errorMessage && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
-                <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
-                <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
-              </div>
-            )}
+            <h2 className="text-2xl font-semibold mb-4">Edição em Massa ({selectedJobs.length} jobs)</h2>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Comment
+                Comentário para todos os jobs selecionados
               </label>
               <Textarea
-                placeholder="Add a comment about the error"
-                value={selectedJob.comment || ''}
-                onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                placeholder="Adicione um comentário para todos os jobs selecionados"
+                value={bulkComment}
+                onChange={(e) => setBulkComment(e.target.value)}
                 className="mb-2"
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Solution
+                Solução para todos os jobs selecionados
               </label>
               <Textarea
-                placeholder="Describe the applied solution"
-                value={selectedJob.solution || ''}
-                onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                placeholder="Descreva a solução aplicada para todos os jobs"
+                value={bulkSolution}
+                onChange={(e) => setBulkSolution(e.target.value)}
                 className="mb-4"
               />
             </div>
@@ -613,30 +725,112 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             <div className="flex justify-between">
               <div className="space-x-2">
                 <Button
-                  variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
+                  variant="outline"
                   onClick={markAsChecking}
-                  className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
+                  className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
                 >
                   <Clock className="h-4 w-4 mr-1" />
-                  {selectedJob.isBeingChecked ? "Being checked" : "Mark as checking"}
+                  Marcar como verificando
                 </Button>
                 <Button
-                  variant={selectedJob.isFixed ? "default" : "outline"}
+                  variant="outline"
                   onClick={markAsFixed}
-                  className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
+                  className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200"
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  {selectedJob.isFixed ? "Fixed" : "Mark as fixed"}
+                  Marcar como corrigido
                 </Button>
               </div>
               <Button onClick={saveComment}>
-                Save
+                Salvar alterações
+              </Button>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t">
+              <Button variant="outline" size="sm" onClick={clearSelection} className="w-full">
+                Voltar para edição individual
               </Button>
             </div>
           </div>
         ) : (
-          <div className="text-center py-10 text-gray-500">
-            Select a job to view details
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
+            {selectedJob ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium">{selectedJob.name}</h3>
+                  <p className="text-sm text-gray-500">ID: {selectedJob.id}</p>
+                  {selectedJob.application && (
+                    <p className="text-sm text-gray-500">Application: {selectedJob.application}</p>
+                  )}
+                  {selectedJob.subApplication && (
+                    <p className="text-sm text-gray-500">SubApplication: {selectedJob.subApplication}</p>
+                  )}
+                  {selectedJob.folder && (
+                    <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
+                  )}
+                </div>
+                
+                {selectedJob.errorMessage && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+                    <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
+                    <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Comment
+                  </label>
+                  <Textarea
+                    placeholder="Add a comment about the error"
+                    value={selectedJob.comment || ''}
+                    onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                    className="mb-2"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Solution
+                  </label>
+                  <Textarea
+                    placeholder="Describe the applied solution"
+                    value={selectedJob.solution || ''}
+                    onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                    className="mb-4"
+                  />
+                </div>
+                
+                <div className="flex justify-between">
+                  <div className="space-x-2">
+                    <Button
+                      variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
+                      onClick={markAsChecking}
+                      className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
+                    >
+                      <Clock className="h-4 w-4 mr-1" />
+                      {selectedJob.isBeingChecked ? "Being checked" : "Mark as checking"}
+                    </Button>
+                    <Button
+                      variant={selectedJob.isFixed ? "default" : "outline"}
+                      onClick={markAsFixed}
+                      className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      {selectedJob.isFixed ? "Fixed" : "Mark as fixed"}
+                    </Button>
+                  </div>
+                  <Button onClick={saveComment}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-gray-500">
+                Select a job to view details
+              </div>
+            )}
           </div>
         )}
       </Card>
