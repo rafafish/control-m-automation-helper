@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,8 @@ import {
   RefreshCw, 
   Search, 
   Calendar as CalendarIcon,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertCircle
 } from "lucide-react";
 import {
   Popover,
@@ -25,6 +27,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Job {
   id: string;
@@ -468,6 +478,28 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     setBulkSolution('');
   };
 
+  const getStatusBadge = (job: Job) => {
+    if (job.isFixed) {
+      return (
+        <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" /> Fixed
+        </Badge>
+      );
+    } else if (job.isBeingChecked) {
+      return (
+        <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
+          <Clock className="h-3 w-3 mr-1" /> Being checked
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="destructive">
+          <AlertCircle className="h-3 w-3 mr-1" /> FAILED
+        </Badge>
+      );
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Card className="p-6 lg:col-span-2">
@@ -611,85 +643,64 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           )}
         </div>
         
-        <ScrollArea className="h-[500px] w-full">
-          <div className="space-y-4">
-            {filteredJobs.map((job) => (
-              <Card 
-                key={job.id} 
-                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                  selectedJob?.id === job.id ? 'ring-2 ring-primary' : ''
-                } ${
-                  job.isFixed ? 'border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20' : 
-                  job.isBeingChecked ? 'border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : ''
-                }`}
-                onClick={() => handleJobClick(job)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+        <ScrollArea className="h-[500px] w-full border rounded-md">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox 
+                    checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
+                    onCheckedChange={selectAllJobs}
+                  />
+                </TableHead>
+                <TableHead>Nome do Job</TableHead>
+                <TableHead>Aplicação</TableHead>
+                <TableHead>SubAplicação</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Início</TableHead>
+                <TableHead>Erro</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredJobs.map((job) => (
+                <TableRow 
+                  key={job.id}
+                  className={cn(
+                    "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
+                    selectedJob?.id === job.id ? "bg-muted" : "",
+                    job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
+                    job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
+                  )}
+                  onClick={() => handleJobClick(job)}
+                >
+                  <TableCell className="p-2">
                     <Checkbox 
                       checked={selectedJobs.includes(job.id)}
                       onCheckedChange={() => toggleJobSelection(job.id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="mr-2"
                     />
-                    <div>
-                      <h3 className="font-medium">{job.name}</h3>
-                      <div className="grid grid-cols-2 text-sm text-gray-500 mt-1">
-                        <p>Application: {job.application || 'N/A'}</p>
-                        <p>SubApplication: {job.subApplication || 'N/A'}</p>
-                        <p>Folder: {job.folder || 'N/A'}</p>
-                        <p>ID: {job.id}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <Badge variant="destructive">
-                      FAILED
-                    </Badge>
-                    {job.isBeingChecked && (
-                      <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
-                        <Clock className="h-3 w-3 mr-1" /> Being checked
-                      </Badge>
-                    )}
-                    {job.isFixed && (
-                      <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Fixed
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {job.startTime && (
-                  <div className="mt-2 text-sm text-gray-500">
-                    <p>Start: {new Date(job.startTime).toLocaleString()}</p>
-                    {job.endTime && <p>End: {new Date(job.endTime).toLocaleString()}</p>}
-                  </div>
-                )}
-                {job.errorMessage && (
-                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-md text-sm">
-                    <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
-                    <p className="text-red-600 dark:text-red-400">{job.errorMessage}</p>
-                  </div>
-                )}
-                {job.comment && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium">Comment:</p>
-                    <p className="text-sm">{job.comment}</p>
-                  </div>
-                )}
-                {job.solution && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium">Solution:</p>
-                    <p className="text-sm">{job.solution}</p>
-                  </div>
-                )}
-              </Card>
-            ))}
-            {filteredJobs.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No failed jobs found with the applied filters.
-              </div>
-            )}
-          </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{job.name}</TableCell>
+                  <TableCell>{job.application || 'N/A'}</TableCell>
+                  <TableCell>{job.subApplication || 'N/A'}</TableCell>
+                  <TableCell>{getStatusBadge(job)}</TableCell>
+                  <TableCell>
+                    {job.startTime ? format(new Date(job.startTime), "dd/MM HH:mm") : 'N/A'}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {job.errorMessage || 'N/A'}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredJobs.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    No failed jobs found with the applied filters.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </Card>
       
@@ -730,7 +741,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
                 >
                   <Clock className="h-4 w-4 mr-1" />
-                  Marcar como verificando
+                  Marcando como verificando
                 </Button>
                 <Button
                   variant="outline"
