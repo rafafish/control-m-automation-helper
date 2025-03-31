@@ -12,33 +12,33 @@ interface WorkflowEditorProps {
 export default function WorkflowEditor({ endpoint, apiKey }: WorkflowEditorProps) {
   return (
     <Card className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">Editor de Workflow</h2>
+      <h2 className="text-2xl font-semibold mb-4">Workflow Editor</h2>
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nome do Workflow
+            Workflow Name
           </label>
-          <Input placeholder="Nome do workflow" />
+          <Input placeholder="Workflow name" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Descrição
+            Description
           </label>
-          <Textarea placeholder="Descrição do workflow" />
+          <Textarea placeholder="Workflow description" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Definição JSON
+            JSON Definition
           </label>
           <Textarea
             className="font-mono"
-            placeholder="Definição do workflow em JSON"
+            placeholder="Workflow definition in JSON format"
             rows={10}
           />
         </div>
         <div className="flex justify-end space-x-2">
-          <Button variant="outline">Cancelar</Button>
-          <Button>Salvar Workflow</Button>
+          <Button variant="outline">Cancel</Button>
+          <Button>Save Workflow</Button>
         </div>
       </div>
     </Card>

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -307,8 +306,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters(updatedJobs);
       
       toast({
-        title: "Comentários salvos",
-        description: `Comentários atualizados para ${selectedJobs.length} jobs`,
+        title: "Comments saved",
+        description: `Comments updated for ${selectedJobs.length} jobs`,
       });
     } else if (selectedJob) {
       setFailedJobs(prev => 
@@ -320,8 +319,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters();
       
       toast({
-        title: "Comentário salvo",
-        description: `Comentário para ${selectedJob.name} foi salvo com sucesso`,
+        title: "Comment saved",
+        description: `Comment for ${selectedJob.name} was successfully saved`,
       });
     }
   };
@@ -346,8 +345,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters(updatedJobs);
       
       toast({
-        title: "Status atualizado",
-        description: `${selectedJobs.length} jobs marcados como "Sendo verificados"`,
+        title: "Status updated",
+        description: `${selectedJobs.length} jobs marked as "Being checked"`,
       });
     } else if (selectedJob) {
       const updatedJob = { ...selectedJob, isBeingChecked: true };
@@ -362,8 +361,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters();
       
       toast({
-        title: "Status atualizado",
-        description: `${updatedJob.name} marcado como "Sendo verificado"`,
+        title: "Status updated",
+        description: `${updatedJob.name} marked as "Being checked"`,
       });
     }
   };
@@ -389,8 +388,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters(updatedJobs);
       
       toast({
-        title: "Status atualizado",
-        description: `${selectedJobs.length} jobs marcados como "Corrigidos"`,
+        title: "Status updated",
+        description: `${selectedJobs.length} jobs marked as "Fixed"`,
       });
     } else if (selectedJob) {
       const updatedJob = { ...selectedJob, isFixed: true, isBeingChecked: false };
@@ -405,8 +404,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       applyFilters();
       
       toast({
-        title: "Status atualizado",
-        description: `${updatedJob.name} marcado como "Corrigido"`,
+        title: "Status updated",
+        description: `${updatedJob.name} marked as "Fixed"`,
       });
     }
   };
@@ -620,13 +619,13 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 onCheckedChange={selectAllJobs}
               />
               <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                Selecionar todos
+                Select all
               </label>
             </div>
             
             {selectedJobs.length > 0 && (
               <Button size="sm" variant="outline" onClick={clearSelection}>
-                Limpar seleção ({selectedJobs.length})
+                Clear selection ({selectedJobs.length})
               </Button>
             )}
           </div>
@@ -638,7 +637,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           </span>
           {selectedJobs.length > 0 && (
             <span className="text-sm text-primary font-medium">
-              {selectedJobs.length} jobs selecionados
+              {selectedJobs.length} jobs selected
             </span>
           )}
         </div>
@@ -707,14 +706,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       <Card className="p-6">
         {selectedJobs.length > 0 ? (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">Edição em Massa ({selectedJobs.length} jobs)</h2>
+            <h2 className="text-2xl font-semibold mb-4">Bulk Edit ({selectedJobs.length} jobs)</h2>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Comentário para todos os jobs selecionados
+                Comment for all selected jobs
               </label>
               <Textarea
-                placeholder="Adicione um comentário para todos os jobs selecionados"
+                placeholder="Add a comment for all selected jobs"
                 value={bulkComment}
                 onChange={(e) => setBulkComment(e.target.value)}
                 className="mb-2"
@@ -723,10 +722,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Solução para todos os jobs selecionados
+                Solution for all selected jobs
               </label>
               <Textarea
-                placeholder="Descreva a solução aplicada para todos os jobs"
+                placeholder="Describe the solution applied to all jobs"
                 value={bulkSolution}
                 onChange={(e) => setBulkSolution(e.target.value)}
                 className="mb-4"
@@ -741,7 +740,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
                 >
                   <Clock className="h-4 w-4 mr-1" />
-                  Marcando como verificando
+                  Mark as checking
                 </Button>
                 <Button
                   variant="outline"
@@ -749,17 +748,17 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200"
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  Marcar como corrigido
+                  Mark as fixed
                 </Button>
               </div>
               <Button onClick={saveComment}>
-                Salvar alterações
+                Save changes
               </Button>
             </div>
             
             <div className="mt-4 pt-4 border-t">
               <Button variant="outline" size="sm" onClick={clearSelection} className="w-full">
-                Voltar para edição individual
+                Return to individual editing
               </Button>
             </div>
           </div>
