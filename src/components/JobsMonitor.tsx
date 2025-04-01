@@ -44,6 +44,7 @@ interface Job {
   folder?: string;
   startTime?: string;
   endTime?: string;
+  orderDate?: string;
   errorMessage?: string;
   comment?: string;
   solution?: string;
@@ -87,6 +88,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         folder: 'Daily_Jobs', 
         startTime: new Date().toISOString(), 
         endTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
         errorMessage: 'Connection timeout to database server'
       },
       { 
@@ -97,7 +99,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         subApplication: 'Infrastructure', 
         folder: 'Weekly_Jobs', 
         startTime: new Date().toISOString(), 
-        endTime: new Date().toISOString() 
+        endTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
       },
       { 
         id: '3', 
@@ -107,6 +110,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         subApplication: 'Payroll', 
         folder: 'Monthly_Jobs', 
         startTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
         errorMessage: 'Invalid input parameters'
       },
       { 
@@ -117,6 +121,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         subApplication: 'CRM', 
         folder: 'Daily_Jobs', 
         startTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
         errorMessage: 'Failed to connect to remote server'
       },
       { 
@@ -127,6 +132,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         subApplication: 'Reporting', 
         folder: 'Daily_Jobs', 
         startTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+        orderDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
         errorMessage: 'Data validation error'
       },
     ];
@@ -154,6 +160,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       subApplication: ['Reporting', 'Processing', 'Backup', 'Analysis'][Math.floor(Math.random() * 4)], 
       folder: ['Daily_Jobs', 'Weekly_Jobs', 'Monthly_Jobs'][Math.floor(Math.random() * 3)], 
       startTime: new Date().toISOString(),
+      orderDate: new Date().toISOString(),
       errorMessage: ['Database error', 'Network timeout', 'Invalid parameters', 'Authentication failed'][Math.floor(Math.random() * 4)]
     };
     
@@ -195,8 +202,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       result = result.filter(job => {
-        if (!job.startTime) return false;
-        const jobDate = new Date(job.startTime);
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
         return jobDate >= today;
       });
     } else if (selectedDate) {
@@ -206,8 +213,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       nextDay.setDate(filterDate.getDate() + 1);
       
       result = result.filter(job => {
-        if (!job.startTime) return false;
-        const jobDate = new Date(job.startTime);
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
         return jobDate >= filterDate && jobDate < nextDay;
       });
     }
@@ -249,8 +256,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       result = result.filter(job => {
-        if (!job.startTime) return false;
-        const jobDate = new Date(job.startTime);
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
         return jobDate >= today;
       });
     } else if (selectedDate) {
@@ -260,8 +267,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       nextDay.setDate(filterDate.getDate() + 1);
       
       result = result.filter(job => {
-        if (!job.startTime) return false;
-        const jobDate = new Date(job.startTime);
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
         return jobDate >= filterDate && jobDate < nextDay;
       });
     }
@@ -427,6 +434,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         Application: job.application || 'N/A',
         SubApplication: job.subApplication || 'N/A',
         Folder: job.folder || 'N/A',
+        OrderDate: job.orderDate ? new Date(job.orderDate).toLocaleString() : 'N/A',
         StartTime: job.startTime ? new Date(job.startTime).toLocaleString() : 'N/A',
         EndTime: job.endTime ? new Date(job.endTime).toLocaleString() : 'N/A',
         Error: job.errorMessage || 'N/A',
@@ -652,12 +660,13 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                     onCheckedChange={selectAllJobs}
                   />
                 </TableHead>
-                <TableHead>Nome do Job</TableHead>
-                <TableHead>Aplicação</TableHead>
-                <TableHead>SubAplicação</TableHead>
+                <TableHead>Job Name</TableHead>
+                <TableHead>Application</TableHead>
+                <TableHead>SubApplication</TableHead>
+                <TableHead>Folder Name</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Erro</TableHead>
+                <TableHead>Order Date</TableHead>
+                <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -682,9 +691,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   <TableCell className="font-medium">{job.name}</TableCell>
                   <TableCell>{job.application || 'N/A'}</TableCell>
                   <TableCell>{job.subApplication || 'N/A'}</TableCell>
+                  <TableCell>{job.folder || 'N/A'}</TableCell>
                   <TableCell>{getStatusBadge(job)}</TableCell>
                   <TableCell>
-                    {job.startTime ? format(new Date(job.startTime), "dd/MM HH:mm") : 'N/A'}
+                    {job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A'}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
                     {job.errorMessage || 'N/A'}
@@ -693,7 +703,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               ))}
               {filteredJobs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     No failed jobs found with the applied filters.
                   </TableCell>
                 </TableRow>
@@ -778,6 +788,22 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   )}
                   {selectedJob.folder && (
                     <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedJob.startTime && (
+                    <div className="text-sm">
+                      <span className="font-medium">Start Time:</span>
+                      <p>{format(new Date(selectedJob.startTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                    </div>
+                  )}
+                  
+                  {selectedJob.endTime && (
+                    <div className="text-sm">
+                      <span className="font-medium">End Time:</span>
+                      <p>{format(new Date(selectedJob.endTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                    </div>
                   )}
                 </div>
                 
