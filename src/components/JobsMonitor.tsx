@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +16,24 @@ import {
   Search, 
   Calendar as CalendarIcon,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpAZ,
+  ArrowDownAZ,
 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -57,6 +69,9 @@ interface JobsMonitorProps {
   apiKey: string;
 }
 
+type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate';
+type SortDirection = 'asc' | 'desc';
+
 export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [failedJobs, setFailedJobs] = useState<Job[]>([]);
@@ -69,6 +84,13 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     showFixed: false,
     todayOnly: false,
   });
+  const [sortConfig, setSortConfig] = useState<{
+    field: SortField;
+    direction: SortDirection;
+  }>({
+    field: 'name',
+    direction: 'asc',
+  });
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [bulkComment, setBulkComment] = useState('');
@@ -76,6 +98,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [columnFilters, setColumnFilters] = useState({
+    name: '',
+    application: '',
+    subApplication: '',
+    folder: '',
+  });
 
   useEffect(() => {
     const mockJobs: Job[] = [
@@ -151,6 +179,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     return () => clearInterval(intervalId);
   }, [refreshInterval]);
 
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [columnFilters, sortConfig]);
+
   const fetchFailedJobs = () => {
     const newJob: Job = { 
       id: Date.now().toString(), 
@@ -166,7 +198,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     setJobs(prev => [...prev, newJob]);
     setFailedJobs(prev => [...prev, newJob]);
-    applyFilters([...failedJobs, newJob]);
+    applyFiltersAndSort([...failedJobs, newJob]);
     
     toast({
       title: "New failed job detected",
@@ -175,9 +207,28 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     });
   };
 
-  const applyFilters = (jobsToFilter = failedJobs) => {
+  const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
+    // First apply all filters
     let result = jobsToFilter;
     
+    // Apply column filters
+    if (columnFilters.name) {
+      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
+    }
+    
+    if (columnFilters.application) {
+      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
+    }
+    
+    if (columnFilters.subApplication) {
+      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
+    }
+    
+    if (columnFilters.folder) {
+      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
+    }
+    
+    // Apply main filters
     if (filters.name) {
       result = result.filter(job => job.name.toLowerCase().includes(filters.name.toLowerCase()));
     }
@@ -216,6 +267,28 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         if (!job.orderDate) return false;
         const jobDate = new Date(job.orderDate);
         return jobDate >= filterDate && jobDate < nextDay;
+      });
+    }
+    
+    // Apply sorting
+    if (sortConfig.field) {
+      result = [...result].sort((a, b) => {
+        const aValue = a[sortConfig.field] || '';
+        const bValue = b[sortConfig.field] || '';
+        
+        if (sortConfig.field === 'orderDate') {
+          // Special handling for date sorting
+          const dateA = aValue ? new Date(aValue).getTime() : 0;
+          const dateB = bValue ? new Date(bValue).getTime() : 0;
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        } else {
+          // String comparison for other fields
+          if (sortConfig.direction === 'asc') {
+            return String(aValue).localeCompare(String(bValue));
+          } else {
+            return String(bValue).localeCompare(String(aValue));
+          }
+        }
       });
     }
     
@@ -272,8 +345,59 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         return jobDate >= filterDate && jobDate < nextDay;
       });
     }
+
+    // Apply column filters
+    if (columnFilters.name) {
+      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
+    }
+    
+    if (columnFilters.application) {
+      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
+    }
+    
+    if (columnFilters.subApplication) {
+      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
+    }
+    
+    if (columnFilters.folder) {
+      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
+    }
+    
+    // Apply sorting
+    if (sortConfig.field) {
+      result = [...result].sort((a, b) => {
+        const aValue = a[sortConfig.field] || '';
+        const bValue = b[sortConfig.field] || '';
+        
+        if (sortConfig.field === 'orderDate') {
+          const dateA = aValue ? new Date(aValue).getTime() : 0;
+          const dateB = bValue ? new Date(bValue).getTime() : 0;
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        } else {
+          if (sortConfig.direction === 'asc') {
+            return String(aValue).localeCompare(String(bValue));
+          } else {
+            return String(bValue).localeCompare(String(aValue));
+          }
+        }
+      });
+    }
     
     setFilteredJobs(result);
+  };
+
+  const handleColumnFilter = (field: keyof typeof columnFilters, value: string) => {
+    const newColumnFilters = { ...columnFilters, [field]: value };
+    setColumnFilters(newColumnFilters);
+  };
+
+  const handleSortChange = (field: SortField) => {
+    // If clicking the same field, toggle direction
+    // If clicking a different field, set to that field with 'asc' direction
+    setSortConfig((prevSort) => ({
+      field,
+      direction: prevSort.field === field && prevSort.direction === 'asc' ? 'desc' : 'asc',
+    }));
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -283,7 +407,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       setFilters(prev => ({...prev, todayOnly: false}));
     }
     
-    applyFilters();
+    applyFiltersAndSort();
   };
 
   const handleJobClick = (job: Job) => {
@@ -310,7 +434,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
       
       setFailedJobs(updatedJobs);
-      applyFilters(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Comments saved",
@@ -323,7 +447,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         )
       );
       
-      applyFilters();
+      applyFiltersAndSort();
       
       toast({
         title: "Comment saved",
@@ -349,7 +473,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
       
       setFailedJobs(updatedJobs);
-      applyFilters(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Status updated",
@@ -365,7 +489,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         )
       );
       
-      applyFilters();
+      applyFiltersAndSort();
       
       toast({
         title: "Status updated",
@@ -392,7 +516,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
       
       setFailedJobs(updatedJobs);
-      applyFilters(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Status updated",
@@ -408,7 +532,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         )
       );
       
-      applyFilters();
+      applyFiltersAndSort();
       
       toast({
         title: "Status updated",
@@ -504,6 +628,26 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           <AlertCircle className="h-3 w-3 mr-1" /> FAILED
         </Badge>
       );
+    }
+  };
+
+  const getColumnFilterIcon = (field: keyof typeof columnFilters) => {
+    return columnFilters[field] ? <Filter className="h-3 w-3 text-primary" /> : <Filter className="h-3 w-3 text-gray-400" />;
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortConfig.field !== field) {
+      return null;
+    }
+    
+    if (field === 'name' || field === 'application' || field === 'subApplication' || field === 'folder') {
+      return sortConfig.direction === 'asc' ? 
+        <ArrowUpAZ className="h-3 w-3" /> : 
+        <ArrowDownAZ className="h-3 w-3" />;
+    } else {
+      return sortConfig.direction === 'asc' ? 
+        <ArrowUp className="h-3 w-3" /> : 
+        <ArrowDown className="h-3 w-3" />;
     }
   };
 
@@ -660,12 +804,190 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                     onCheckedChange={selectAllJobs}
                   />
                 </TableHead>
-                <TableHead>Job Name</TableHead>
-                <TableHead>Application</TableHead>
-                <TableHead>SubApplication</TableHead>
-                <TableHead>Folder Name</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="cursor-pointer flex items-center gap-1" 
+                      onClick={() => handleSortChange('name')}
+                    >
+                      Job Name
+                      {getSortIcon('name')}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          {getColumnFilterIcon('name')}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <div className="p-2">
+                          <Input 
+                            placeholder="Filter job names" 
+                            value={columnFilters.name}
+                            onChange={(e) => handleColumnFilter('name', e.target.value)}
+                            className="h-8 mb-2"
+                          />
+                          <div className="flex justify-between mt-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleColumnFilter('name', '')}
+                            >
+                              Clear
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => document.body.click()} // close dropdown
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="cursor-pointer flex items-center gap-1" 
+                      onClick={() => handleSortChange('application')}
+                    >
+                      Application
+                      {getSortIcon('application')}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          {getColumnFilterIcon('application')}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <div className="p-2">
+                          <Input 
+                            placeholder="Filter applications" 
+                            value={columnFilters.application}
+                            onChange={(e) => handleColumnFilter('application', e.target.value)}
+                            className="h-8 mb-2"
+                          />
+                          <div className="flex justify-between mt-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleColumnFilter('application', '')}
+                            >
+                              Clear
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => document.body.click()} // close dropdown
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="cursor-pointer flex items-center gap-1" 
+                      onClick={() => handleSortChange('subApplication')}
+                    >
+                      SubApplication
+                      {getSortIcon('subApplication')}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          {getColumnFilterIcon('subApplication')}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <div className="p-2">
+                          <Input 
+                            placeholder="Filter subApplications" 
+                            value={columnFilters.subApplication}
+                            onChange={(e) => handleColumnFilter('subApplication', e.target.value)}
+                            className="h-8 mb-2"
+                          />
+                          <div className="flex justify-between mt-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleColumnFilter('subApplication', '')}
+                            >
+                              Clear
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => document.body.click()} // close dropdown
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="cursor-pointer flex items-center gap-1" 
+                      onClick={() => handleSortChange('folder')}
+                    >
+                      Folder Name
+                      {getSortIcon('folder')}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          {getColumnFilterIcon('folder')}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <div className="p-2">
+                          <Input 
+                            placeholder="Filter folders" 
+                            value={columnFilters.folder}
+                            onChange={(e) => handleColumnFilter('folder', e.target.value)}
+                            className="h-8 mb-2"
+                          />
+                          <div className="flex justify-between mt-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleColumnFilter('folder', '')}
+                            >
+                              Clear
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => document.body.click()} // close dropdown
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Order Date</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="cursor-pointer flex items-center gap-1" 
+                      onClick={() => handleSortChange('orderDate')}
+                    >
+                      Order Date
+                      {getSortIcon('orderDate')}
+                    </div>
+                  </div>
+                </TableHead>
                 <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
