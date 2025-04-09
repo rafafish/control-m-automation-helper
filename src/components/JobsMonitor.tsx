@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -77,10 +76,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const [failedJobs, setFailedJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [filters, setFilters] = useState({
-    name: '',
-    application: '',
-    subApplication: '',
-    folder: '',
     showFixed: false,
     todayOnly: false,
   });
@@ -229,22 +224,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
     
     // Apply main filters
-    if (filters.name) {
-      result = result.filter(job => job.name.toLowerCase().includes(filters.name.toLowerCase()));
-    }
-    
-    if (filters.application) {
-      result = result.filter(job => job.application?.toLowerCase().includes(filters.application.toLowerCase()));
-    }
-    
-    if (filters.subApplication) {
-      result = result.filter(job => job.subApplication?.toLowerCase().includes(filters.subApplication.toLowerCase()));
-    }
-    
-    if (filters.folder) {
-      result = result.filter(job => job.folder?.toLowerCase().includes(filters.folder.toLowerCase()));
-    }
-    
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -277,12 +256,10 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         const bValue = b[sortConfig.field] || '';
         
         if (sortConfig.field === 'orderDate') {
-          // Special handling for date sorting
           const dateA = aValue ? new Date(aValue).getTime() : 0;
           const dateB = bValue ? new Date(bValue).getTime() : 0;
           return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
         } else {
-          // String comparison for other fields
           if (sortConfig.direction === 'asc') {
             return String(aValue).localeCompare(String(bValue));
           } else {
@@ -305,20 +282,21 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     let result = failedJobs;
     
-    if (newFilters.name) {
-      result = result.filter(job => job.name.toLowerCase().includes(newFilters.name.toLowerCase()));
+    // Apply column filters
+    if (columnFilters.name) {
+      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
     }
     
-    if (newFilters.application) {
-      result = result.filter(job => job.application?.toLowerCase().includes(newFilters.application.toLowerCase()));
+    if (columnFilters.application) {
+      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
     }
     
-    if (newFilters.subApplication) {
-      result = result.filter(job => job.subApplication?.toLowerCase().includes(newFilters.subApplication.toLowerCase()));
+    if (columnFilters.subApplication) {
+      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
     }
     
-    if (newFilters.folder) {
-      result = result.filter(job => job.folder?.toLowerCase().includes(newFilters.folder.toLowerCase()));
+    if (columnFilters.folder) {
+      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
     }
     
     if (!newFilters.showFixed) {
@@ -344,23 +322,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         const jobDate = new Date(job.orderDate);
         return jobDate >= filterDate && jobDate < nextDay;
       });
-    }
-
-    // Apply column filters
-    if (columnFilters.name) {
-      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
-    }
-    
-    if (columnFilters.application) {
-      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
-    }
-    
-    if (columnFilters.subApplication) {
-      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
-    }
-    
-    if (columnFilters.folder) {
-      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
     }
     
     // Apply sorting
@@ -668,53 +629,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             >
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
             </Button>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div>
-            <div className="flex items-center mb-1">
-              <Search className="h-4 w-4 mr-1 text-gray-500" />
-              <label className="text-sm font-medium">Job Name</label>
-            </div>
-            <Input 
-              placeholder="Filter by name" 
-              value={filters.name}
-              onChange={(e) => handleFilterChange('name', e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="flex items-center mb-1">
-              <Filter className="h-4 w-4 mr-1 text-gray-500" />
-              <label className="text-sm font-medium">Application</label>
-            </div>
-            <Input 
-              placeholder="Filter by application" 
-              value={filters.application}
-              onChange={(e) => handleFilterChange('application', e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="flex items-center mb-1">
-              <Filter className="h-4 w-4 mr-1 text-gray-500" />
-              <label className="text-sm font-medium">SubApplication</label>
-            </div>
-            <Input 
-              placeholder="Filter by subApplication" 
-              value={filters.subApplication}
-              onChange={(e) => handleFilterChange('subApplication', e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="flex items-center mb-1">
-              <Filter className="h-4 w-4 mr-1 text-gray-500" />
-              <label className="text-sm font-medium">Folder</label>
-            </div>
-            <Input 
-              placeholder="Filter by folder" 
-              value={filters.folder}
-              onChange={(e) => handleFilterChange('folder', e.target.value)}
-            />
           </div>
         </div>
         
