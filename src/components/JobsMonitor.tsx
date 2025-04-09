@@ -21,6 +21,8 @@ import {
   ArrowUpAZ,
   ArrowDownAZ,
   User,
+  GripHorizontal,
+  MoveHorizontal,
 } from "lucide-react";
 import {
   Popover,
@@ -46,6 +48,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 interface Job {
   id: string;
@@ -73,6 +80,14 @@ interface JobsMonitorProps {
 
 type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate';
 type SortDirection = 'asc' | 'desc';
+
+type ColumnConfig = {
+  id: string;
+  label: string;
+  width: number;
+  visible: boolean;
+  order: number;
+};
 
 export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -102,6 +117,19 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     subApplication: '',
     folder: '',
   });
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { id: 'checkbox', label: '', width: 5, visible: true, order: 0 },
+    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 1 },
+    { id: 'application', label: 'Application', width: 15, visible: true, order: 2 },
+    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 3 },
+    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 4 },
+    { id: 'status', label: 'Status', width: 10, visible: true, order: 5 },
+    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 6 },
+    { id: 'orderDate', label: 'Order Date', width: 10, visible: true, order: 7 },
+    { id: 'error', label: 'Error', width: 20, visible: true, order: 8 },
+  ]);
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  
   const currentUser = "John Doe";
 
   useEffect(() => {
@@ -629,6 +657,77 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
+  // Column resizing handler
+  const handleResizeEnd = (columnId: string, newSize: number) => {
+    setColumns(columns.map(col => 
+      col.id === columnId ? { ...col, width: newSize } : col
+    ));
+  };
+
+  // Column drag start handler
+  const handleDragStart = (columnId: string) => {
+    setDraggedColumn(columnId);
+  };
+
+  // Column drag over handler
+  const handleDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault();
+    if (draggedColumn && draggedColumn !== columnId) {
+      const updatedColumns = [...columns];
+      const draggedIndex = updatedColumns.findIndex(col => col.id === draggedColumn);
+      const targetIndex = updatedColumns.findIndex(col => col.id === columnId);
+      
+      // Swap order values
+      const draggedOrder = updatedColumns[draggedIndex].order;
+      updatedColumns[draggedIndex].order = updatedColumns[targetIndex].order;
+      updatedColumns[targetIndex].order = draggedOrder;
+      
+      setColumns(updatedColumns.sort((a, b) => a.order - b.order));
+    }
+  };
+
+  // Column drag end handler
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
+  // Get sorted columns
+  const getSortedColumns = () => {
+    return [...columns].sort((a, b) => a.order - b.order);
+  };
+
+  // Render the cell content based on column id
+  const renderCellContent = (job: Job, columnId: string) => {
+    switch (columnId) {
+      case 'checkbox':
+        return (
+          <Checkbox 
+            checked={selectedJobs.includes(job.id)}
+            onCheckedChange={() => toggleJobSelection(job.id)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        );
+      case 'name':
+        return job.name;
+      case 'application':
+        return job.application || 'N/A';
+      case 'subApplication':
+        return job.subApplication || 'N/A';
+      case 'folder':
+        return job.folder || 'N/A';
+      case 'status':
+        return getStatusBadge(job);
+      case 'assignedTo':
+        return getUserInfo(job);
+      case 'orderDate':
+        return job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A';
+      case 'error':
+        return job.errorMessage || 'N/A';
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Card className="p-6 lg:col-span-2">
@@ -725,246 +824,178 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           )}
         </div>
         
-        <ScrollArea className="h-[500px] w-full border rounded-md">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background z-10">
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox 
-                    checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
-                    onCheckedChange={selectAllJobs}
-                  />
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <div 
-                      className="cursor-pointer flex items-center gap-1" 
-                      onClick={() => handleSortChange('name')}
-                    >
-                      Job Name
-                      {getSortIcon('name')}
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                          {getColumnFilterIcon('name')}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <div className="p-2">
-                          <Input 
-                            placeholder="Filter job names" 
-                            value={columnFilters.name}
-                            onChange={(e) => handleColumnFilter('name', e.target.value)}
-                            className="h-8 mb-2"
-                          />
-                          <div className="flex justify-between mt-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleColumnFilter('name', '')}
-                            >
-                              Clear
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => document.body.click()} // close dropdown
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <div 
-                      className="cursor-pointer flex items-center gap-1" 
-                      onClick={() => handleSortChange('application')}
-                    >
-                      Application
-                      {getSortIcon('application')}
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                          {getColumnFilterIcon('application')}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <div className="p-2">
-                          <Input 
-                            placeholder="Filter applications" 
-                            value={columnFilters.application}
-                            onChange={(e) => handleColumnFilter('application', e.target.value)}
-                            className="h-8 mb-2"
-                          />
-                          <div className="flex justify-between mt-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleColumnFilter('application', '')}
-                            >
-                              Clear
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => document.body.click()} // close dropdown
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <div 
-                      className="cursor-pointer flex items-center gap-1" 
-                      onClick={() => handleSortChange('subApplication')}
-                    >
-                      SubApplication
-                      {getSortIcon('subApplication')}
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                          {getColumnFilterIcon('subApplication')}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <div className="p-2">
-                          <Input 
-                            placeholder="Filter subApplications" 
-                            value={columnFilters.subApplication}
-                            onChange={(e) => handleColumnFilter('subApplication', e.target.value)}
-                            className="h-8 mb-2"
-                          />
-                          <div className="flex justify-between mt-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleColumnFilter('subApplication', '')}
-                            >
-                              Clear
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => document.body.click()} // close dropdown
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <div 
-                      className="cursor-pointer flex items-center gap-1" 
-                      onClick={() => handleSortChange('folder')}
-                    >
-                      Folder Name
-                      {getSortIcon('folder')}
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                          {getColumnFilterIcon('folder')}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <div className="p-2">
-                          <Input 
-                            placeholder="Filter folders" 
-                            value={columnFilters.folder}
-                            onChange={(e) => handleColumnFilter('folder', e.target.value)}
-                            className="h-8 mb-2"
-                          />
-                          <div className="flex justify-between mt-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleColumnFilter('folder', '')}
-                            >
-                              Clear
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => document.body.click()} // close dropdown
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <div 
-                      className="cursor-pointer flex items-center gap-1" 
-                      onClick={() => handleSortChange('orderDate')}
-                    >
-                      Order Date
-                      {getSortIcon('orderDate')}
-                    </div>
-                  </div>
-                </TableHead>
-                <TableHead>Error</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredJobs.map((job) => (
-                <TableRow 
-                  key={job.id}
-                  className={cn(
-                    "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
-                    selectedJob?.id === job.id ? "bg-muted" : "",
-                    job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
-                    job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
-                  )}
-                  onClick={() => handleJobClick(job)}
-                >
-                  <TableCell className="p-2">
-                    <Checkbox 
-                      checked={selectedJobs.includes(job.id)}
-                      onCheckedChange={() => toggleJobSelection(job.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{job.name}</TableCell>
-                  <TableCell>{job.application || 'N/A'}</TableCell>
-                  <TableCell>{job.subApplication || 'N/A'}</TableCell>
-                  <TableCell>{job.folder || 'N/A'}</TableCell>
-                  <TableCell>{getStatusBadge(job)}</TableCell>
-                  <TableCell>{getUserInfo(job)}</TableCell>
-                  <TableCell>
-                    {job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A'}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {job.errorMessage || 'N/A'}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredJobs.length === 0 && (
+        <ScrollArea className="h-[500px] w-full border rounded-md" orientation="both">
+          <div className="min-w-max">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    No failed jobs found with the applied filters.
-                  </TableCell>
+                  {getSortedColumns().filter(col => col.visible).map((column) => (
+                    <TableHead 
+                      key={column.id}
+                      style={{ width: `${column.width}%` }}
+                      className="relative group"
+                      draggable={column.id !== 'checkbox'}
+                      onDragStart={() => handleDragStart(column.id)}
+                      onDragOver={(e) => handleDragOver(e, column.id)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <div className="flex items-center gap-1">
+                        {column.id !== 'checkbox' && (
+                          <div 
+                            className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Drag to reorder column"
+                          >
+                            <GripHorizontal className="h-4 w-4 text-gray-400" />
+                          </div>
+                        )}
+                        
+                        {column.id === 'name' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('name')}
+                          >
+                            {column.label}
+                            {getSortIcon('name')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'application' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('application')}
+                          >
+                            {column.label}
+                            {getSortIcon('application')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'subApplication' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('subApplication')}
+                          >
+                            {column.label}
+                            {getSortIcon('subApplication')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'folder' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('folder')}
+                          >
+                            {column.label}
+                            {getSortIcon('folder')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'orderDate' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('orderDate')}
+                          >
+                            {column.label}
+                            {getSortIcon('orderDate')}
+                          </div>
+                        )}
+                        
+                        {!['checkbox', 'name', 'application', 'subApplication', 'folder', 'orderDate'].includes(column.id) && (
+                          <div>{column.label}</div>
+                        )}
+                        
+                        {['name', 'application', 'subApplication', 'folder'].includes(column.id) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                {getColumnFilterIcon(column.id as keyof typeof columnFilters)}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <div className="p-2">
+                                <Input 
+                                  placeholder={`Filter ${column.label.toLowerCase()}`}
+                                  value={columnFilters[column.id as keyof typeof columnFilters]}
+                                  onChange={(e) => handleColumnFilter(column.id as keyof typeof columnFilters, e.target.value)}
+                                  className="h-8 mb-2"
+                                />
+                                <div className="flex justify-between mt-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleColumnFilter(column.id as keyof typeof columnFilters, '')}
+                                  >
+                                    Clear
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => document.body.click()} // close dropdown
+                                  >
+                                    Apply
+                                  </Button>
+                                </div>
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                      
+                      {/* Column resize handle */}
+                      {column.id !== 'checkbox' && (
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-gray-400 cursor-col-resize"
+                          onMouseDown={(e) => {
+                            const startX = e.clientX;
+                            const startWidth = column.width;
+                            
+                            const handleMouseMove = (e: MouseEvent) => {
+                              const diff = e.clientX - startX;
+                              const newWidth = Math.max(5, startWidth + (diff * 0.1));
+                              handleResizeEnd(column.id, newWidth);
+                            };
+                            
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                            };
+                            
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        />
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredJobs.map((job) => (
+                  <TableRow 
+                    key={job.id}
+                    className={cn(
+                      "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
+                      selectedJob?.id === job.id ? "bg-muted" : "",
+                      job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
+                      job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
+                    )}
+                    onClick={() => handleJobClick(job)}
+                  >
+                    {getSortedColumns().filter(col => col.visible).map((column) => (
+                      <TableCell key={`${job.id}-${column.id}`} className="p-2">
+                        {renderCellContent(job, column.id)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+                {filteredJobs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={getSortedColumns().filter(col => col.visible).length} className="text-center py-8 text-gray-500">
+                      No failed jobs found with the applied filters.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </ScrollArea>
       </Card>
       
