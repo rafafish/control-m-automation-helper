@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +20,7 @@ import {
   ArrowDown,
   ArrowUpAZ,
   ArrowDownAZ,
+  User,
 } from "lucide-react";
 import {
   Popover,
@@ -477,7 +477,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         isFixed: true, 
         isBeingChecked: false,
         fixedBy: currentUser,
-        checkedBy: selectedJob.checkedBy  // Fix: Changed from job.checkedBy to selectedJob.checkedBy
+        checkedBy: selectedJob.checkedBy
       };
       setSelectedJob(updatedJob);
       
@@ -570,14 +570,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       return (
         <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
           <CheckCircle className="h-3 w-3 mr-1" /> 
-          Fixed{job.fixedBy ? ` by ${job.fixedBy}` : ''}
+          Fixed
         </Badge>
       );
     } else if (job.isBeingChecked) {
       return (
         <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
           <Clock className="h-3 w-3 mr-1" /> 
-          Being checked{job.checkedBy ? ` by ${job.checkedBy}` : ''}
+          Being checked
         </Badge>
       );
     } else {
@@ -586,6 +586,26 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           <AlertCircle className="h-3 w-3 mr-1" /> FAILED
         </Badge>
       );
+    }
+  };
+
+  const getUserInfo = (job: Job) => {
+    if (job.isFixed && job.fixedBy) {
+      return (
+        <div className="flex items-center text-sm text-green-700 dark:text-green-400">
+          <User className="h-3 w-3 mr-1" /> 
+          {job.fixedBy}
+        </div>
+      );
+    } else if (job.isBeingChecked && job.checkedBy) {
+      return (
+        <div className="flex items-center text-sm text-yellow-700 dark:text-yellow-400">
+          <User className="h-3 w-3 mr-1" /> 
+          {job.checkedBy}
+        </div>
+      );
+    } else {
+      return null;
     }
   };
 
@@ -888,6 +908,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   </div>
                 </TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-1">
                     <div 
@@ -926,6 +947,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                   <TableCell>{job.subApplication || 'N/A'}</TableCell>
                   <TableCell>{job.folder || 'N/A'}</TableCell>
                   <TableCell>{getStatusBadge(job)}</TableCell>
+                  <TableCell>{getUserInfo(job)}</TableCell>
                   <TableCell>
                     {job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A'}
                   </TableCell>
@@ -936,7 +958,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               ))}
               {filteredJobs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     No failed jobs found with the applied filters.
                   </TableCell>
                 </TableRow>
