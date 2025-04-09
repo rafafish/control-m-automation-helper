@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -476,7 +477,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         isFixed: true, 
         isBeingChecked: false,
         fixedBy: currentUser,
-        checkedBy: job.checkedBy
+        checkedBy: selectedJob.checkedBy  // Fix: Changed from job.checkedBy to selectedJob.checkedBy
       };
       setSelectedJob(updatedJob);
       
