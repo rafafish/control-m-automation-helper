@@ -61,6 +61,8 @@ interface Job {
   solution?: string;
   isBeingChecked?: boolean;
   isFixed?: boolean;
+  checkedBy?: string;
+  fixedBy?: string;
 }
 
 interface JobsMonitorProps {
@@ -99,6 +101,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     subApplication: '',
     folder: '',
   });
+  const currentUser = "John Doe";
 
   useEffect(() => {
     const mockJobs: Job[] = [
@@ -134,7 +137,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         folder: 'Monthly_Jobs', 
         startTime: new Date().toISOString(),
         orderDate: new Date().toISOString(),
-        errorMessage: 'Invalid input parameters'
+        errorMessage: 'Invalid input parameters',
+        isBeingChecked: true,
+        checkedBy: 'Alice Smith'
       },
       { 
         id: '4', 
@@ -145,7 +150,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         folder: 'Daily_Jobs', 
         startTime: new Date().toISOString(),
         orderDate: new Date().toISOString(),
-        errorMessage: 'Failed to connect to remote server'
+        errorMessage: 'Failed to connect to remote server',
+        isFixed: true,
+        fixedBy: 'Bob Johnson'
       },
       { 
         id: '5', 
@@ -203,10 +210,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
-    // First apply all filters
     let result = jobsToFilter;
     
-    // Apply column filters
     if (columnFilters.name) {
       result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
     }
@@ -223,7 +228,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
     }
     
-    // Apply main filters
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -249,7 +253,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
     
-    // Apply sorting
     if (sortConfig.field) {
       result = [...result].sort((a, b) => {
         const aValue = a[sortConfig.field] || '';
@@ -282,7 +285,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     let result = failedJobs;
     
-    // Apply column filters
     if (columnFilters.name) {
       result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
     }
@@ -324,26 +326,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
     
-    // Apply sorting
-    if (sortConfig.field) {
-      result = [...result].sort((a, b) => {
-        const aValue = a[sortConfig.field] || '';
-        const bValue = b[sortConfig.field] || '';
-        
-        if (sortConfig.field === 'orderDate') {
-          const dateA = aValue ? new Date(aValue).getTime() : 0;
-          const dateB = bValue ? new Date(bValue).getTime() : 0;
-          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
-        } else {
-          if (sortConfig.direction === 'asc') {
-            return String(aValue).localeCompare(String(bValue));
-          } else {
-            return String(bValue).localeCompare(String(aValue));
-          }
-        }
-      });
-    }
-    
     setFilteredJobs(result);
   };
 
@@ -353,8 +335,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const handleSortChange = (field: SortField) => {
-    // If clicking the same field, toggle direction
-    // If clicking a different field, set to that field with 'asc' direction
     setSortConfig((prevSort) => ({
       field,
       direction: prevSort.field === field && prevSort.direction === 'asc' ? 'desc' : 'asc',
@@ -427,7 +407,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             ...job,
             isBeingChecked: true,
             comment: bulkComment || job.comment,
-            solution: bulkSolution || job.solution
+            solution: bulkSolution || job.solution,
+            checkedBy: currentUser
           };
         }
         return job;
@@ -438,10 +419,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       
       toast({
         title: "Status updated",
-        description: `${selectedJobs.length} jobs marked as "Being checked"`,
+        description: `${selectedJobs.length} jobs marked as "Being checked" by ${currentUser}`,
       });
     } else if (selectedJob) {
-      const updatedJob = { ...selectedJob, isBeingChecked: true };
+      const updatedJob = { 
+        ...selectedJob, 
+        isBeingChecked: true,
+        checkedBy: currentUser
+      };
       setSelectedJob(updatedJob);
       
       setFailedJobs(prev => 
@@ -454,7 +439,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       
       toast({
         title: "Status updated",
-        description: `${updatedJob.name} marked as "Being checked"`,
+        description: `${updatedJob.name} marked as "Being checked" by ${currentUser}`,
       });
     }
   };
@@ -470,7 +455,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
             isFixed: true,
             isBeingChecked: false,
             comment: bulkComment || job.comment,
-            solution: bulkSolution || job.solution
+            solution: bulkSolution || job.solution,
+            fixedBy: currentUser,
+            checkedBy: job.checkedBy
           };
         }
         return job;
@@ -481,10 +468,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       
       toast({
         title: "Status updated",
-        description: `${selectedJobs.length} jobs marked as "Fixed"`,
+        description: `${selectedJobs.length} jobs marked as "Fixed" by ${currentUser}`,
       });
     } else if (selectedJob) {
-      const updatedJob = { ...selectedJob, isFixed: true, isBeingChecked: false };
+      const updatedJob = { 
+        ...selectedJob, 
+        isFixed: true, 
+        isBeingChecked: false,
+        fixedBy: currentUser,
+        checkedBy: job.checkedBy
+      };
       setSelectedJob(updatedJob);
       
       setFailedJobs(prev => 
@@ -497,7 +490,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       
       toast({
         title: "Status updated",
-        description: `${updatedJob.name} marked as "Fixed"`,
+        description: `${updatedJob.name} marked as "Fixed" by ${currentUser}`,
       });
     }
   };
@@ -525,7 +518,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         Error: job.errorMessage || 'N/A',
         Comment: job.comment || 'N/A',
         Solution: job.solution || 'N/A',
-        JobStatus: job.isFixed ? 'Fixed' : (job.isBeingChecked ? 'Being checked' : 'Failed')
+        JobStatus: job.isFixed ? `Fixed by ${job.fixedBy || 'Unknown'}` : 
+                  (job.isBeingChecked ? `Being checked by ${job.checkedBy || 'Unknown'}` : 'Failed')
       }))
     );
     
@@ -574,13 +568,15 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     if (job.isFixed) {
       return (
         <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
-          <CheckCircle className="h-3 w-3 mr-1" /> Fixed
+          <CheckCircle className="h-3 w-3 mr-1" /> 
+          Fixed{job.fixedBy ? ` by ${job.fixedBy}` : ''}
         </Badge>
       );
     } else if (job.isBeingChecked) {
       return (
         <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
-          <Clock className="h-3 w-3 mr-1" /> Being checked
+          <Clock className="h-3 w-3 mr-1" /> 
+          Being checked{job.checkedBy ? ` by ${job.checkedBy}` : ''}
         </Badge>
       );
     } else {
@@ -1082,7 +1078,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                       className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
                     >
                       <Clock className="h-4 w-4 mr-1" />
-                      {selectedJob.isBeingChecked ? "Being checked" : "Mark as checking"}
+                      {selectedJob.isBeingChecked ? selectedJob.checkedBy ? `Being checked by ${selectedJob.checkedBy}` : "Being checked" : "Mark as checking"}
                     </Button>
                     <Button
                       variant={selectedJob.isFixed ? "default" : "outline"}
@@ -1090,7 +1086,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                       className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
                     >
                       <CheckCircle className="h-4 w-4 mr-1" />
-                      {selectedJob.isFixed ? "Fixed" : "Mark as fixed"}
+                      {selectedJob.isFixed ? selectedJob.fixedBy ? `Fixed by ${selectedJob.fixedBy}` : "Fixed" : "Mark as fixed"}
                     </Button>
                   </div>
                   <Button onClick={saveComment}>
