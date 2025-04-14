@@ -1,13 +1,45 @@
-
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Filter, 
+  CheckCircle, 
+  Clock, 
+  RefreshCw, 
+  Search, 
+  Calendar as CalendarIcon,
+  FileSpreadsheet,
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpAZ,
+  ArrowDownAZ,
+  User,
+  GripHorizontal,
+  MoveHorizontal,
+} from "lucide-react";
 import {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent
-} from "@/components/ui/card";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -16,50 +48,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { CalendarIcon, RefreshCw, GripHorizontal, FileSpreadsheet } from "lucide-react";
-import { format } from "date-fns";
-import * as XLSX from 'xlsx';
-import { cn } from "@/lib/utils";
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 interface Job {
   id: string;
-  jobName: string;
-  folderName: string;
-  status: string;
-  startTime: string;
-  endTime: string;
-  duration: string;
-  retries: number;
-  logLink: string;
-  runId: string;
-  orderId: string;
-  fixed: boolean;
-}
-
-interface Column {
-  id: string;
-  label: string;
-  width: number;
-  sortable: boolean;
-  filterable: boolean;
-  visible: boolean;
+  name: string;
+  status: 'running' | 'completed' | 'failed' | 'waiting';
+  application?: string;
+  subApplication?: string;
+  folder?: string;
+  startTime?: string;
+  endTime?: string;
+  orderDate?: string;
+  errorMessage?: string;
+  comment?: string;
+  solution?: string;
+  isBeingChecked?: boolean;
+  isFixed?: boolean;
+  checkedBy?: string;
+  fixedBy?: string;
 }
 
 interface JobsMonitorProps {
@@ -67,340 +78,684 @@ interface JobsMonitorProps {
   apiKey: string;
 }
 
+type SortField = keyof Job;
+type SortDirection = 'asc' | 'desc';
+
+type ColumnConfig = {
+  id: string;
+  label: string;
+  width: number;
+  visible: boolean;
+  order: number;
+  sortable: boolean;
+  filterable: boolean;
+};
+
 export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [failedJobs, setFailedJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     showFixed: false,
     todayOnly: false,
   });
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [columns, setColumns] = useState<Column[]>([
-    { id: 'checkbox', label: '', width: 3, sortable: false, filterable: false, visible: true },
-    { id: 'jobName', label: 'Job Name', width: 15, sortable: true, filterable: true, visible: true },
-    { id: 'folderName', label: 'Folder Name', width: 15, sortable: true, filterable: true, visible: true },
-    { id: 'status', label: 'Status', width: 10, sortable: true, filterable: true, visible: true },
-    { id: 'startTime', label: 'Start Time', width: 12, sortable: true, filterable: false, visible: true },
-    { id: 'endTime', label: 'End Time', width: 12, sortable: true, filterable: false, visible: true },
-    { id: 'duration', label: 'Duration', width: 8, sortable: true, filterable: false, visible: true },
-    { id: 'retries', label: 'Retries', width: 7, sortable: true, filterable: false, visible: true },
-    { id: 'logLink', label: 'Log Link', width: 8, sortable: false, filterable: false, visible: true },
-  ]);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({
-    key: 'startTime',
-    direction: 'descending',
+  const [sortConfig, setSortConfig] = useState<{
+    field: SortField;
+    direction: SortDirection;
+  }>({
+    field: 'name',
+    direction: 'asc',
   });
-  const [columnOrder, setColumnOrder] = useState<string[]>(columns.map(col => col.id));
-  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
+  const [bulkComment, setBulkComment] = useState('');
+  const [bulkSolution, setBulkSolution] = useState('');
+  const { toast } = useToast();
+  const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({
+    name: '',
+    application: '',
+    subApplication: '',
+    folder: '',
+    status: '',
+    errorMessage: '',
+    assignedTo: '',
+    orderDate: '',
+  });
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { id: 'checkbox', label: '', width: 5, visible: true, order: 0, sortable: false, filterable: false },
+    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 1, sortable: true, filterable: true },
+    { id: 'application', label: 'Application', width: 15, visible: true, order: 2, sortable: true, filterable: true },
+    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 3, sortable: true, filterable: true },
+    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 4, sortable: true, filterable: true },
+    { id: 'status', label: 'Status', width: 10, visible: true, order: 5, sortable: true, filterable: true },
+    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 6, sortable: true, filterable: true },
+    { id: 'orderDate', label: 'Order Date', width: 10, visible: true, order: 7, sortable: true, filterable: true },
+    { id: 'error', label: 'Error', width: 20, visible: true, order: 8, sortable: true, filterable: true },
+  ]);
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  
+  const currentUser = "John Doe";
 
-  const fetchFailedJobs = useCallback(async () => {
-    try {
-      const response = await fetch(`${endpoint}/jobs/failed`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-      });
+  useEffect(() => {
+    const mockJobs: Job[] = [
+      { 
+        id: '1', 
+        name: 'ETL_Daily', 
+        status: 'failed', 
+        application: 'Finance', 
+        subApplication: 'Accounting', 
+        folder: 'Daily_Jobs', 
+        startTime: new Date().toISOString(), 
+        endTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
+        errorMessage: 'Connection timeout to database server'
+      },
+      { 
+        id: '2', 
+        name: 'Backup_Weekly', 
+        status: 'completed', 
+        application: 'IT', 
+        subApplication: 'Infrastructure', 
+        folder: 'Weekly_Jobs', 
+        startTime: new Date().toISOString(), 
+        endTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
+      },
+      { 
+        id: '3', 
+        name: 'Report_Generation', 
+        status: 'failed', 
+        application: 'HR', 
+        subApplication: 'Payroll', 
+        folder: 'Monthly_Jobs', 
+        startTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
+        errorMessage: 'Invalid input parameters',
+        isBeingChecked: true,
+        checkedBy: 'Alice Smith'
+      },
+      { 
+        id: '4', 
+        name: 'Data_Sync', 
+        status: 'failed', 
+        application: 'Sales', 
+        subApplication: 'CRM', 
+        folder: 'Daily_Jobs', 
+        startTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
+        errorMessage: 'Failed to connect to remote server',
+        isFixed: true,
+        fixedBy: 'Bob Johnson'
+      },
+      { 
+        id: '5', 
+        name: 'Yesterday_Job', 
+        status: 'failed', 
+        application: 'Finance', 
+        subApplication: 'Reporting', 
+        folder: 'Daily_Jobs', 
+        startTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+        orderDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+        errorMessage: 'Data validation error'
+      },
+    ];
+    
+    setJobs(mockJobs);
+    const failed = mockJobs.filter(job => job.status === 'failed');
+    setFailedJobs(failed);
+    setFilteredJobs(failed);
+  }, []);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchFailedJobs();
+    }, refreshInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [refreshInterval]);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [columnFilters, sortConfig, filters, selectedDate]);
+
+  const fetchFailedJobs = () => {
+    const newJob: Job = { 
+      id: Date.now().toString(), 
+      name: `Job_${Math.floor(Math.random() * 1000)}`, 
+      status: 'failed', 
+      application: ['Finance', 'IT', 'HR', 'Sales'][Math.floor(Math.random() * 4)], 
+      subApplication: ['Reporting', 'Processing', 'Backup', 'Analysis'][Math.floor(Math.random() * 4)], 
+      folder: ['Daily_Jobs', 'Weekly_Jobs', 'Monthly_Jobs'][Math.floor(Math.random() * 3)], 
+      startTime: new Date().toISOString(),
+      orderDate: new Date().toISOString(),
+      errorMessage: ['Database error', 'Network timeout', 'Invalid parameters', 'Authentication failed'][Math.floor(Math.random() * 4)]
+    };
+    
+    setJobs(prev => [...prev, newJob]);
+    setFailedJobs(prev => [...prev, newJob]);
+    applyFiltersAndSort([...failedJobs, newJob]);
+    
+    toast({
+      title: "New failed job detected",
+      description: `${newJob.name} failed with error: ${newJob.errorMessage}`,
+      variant: "destructive",
+    });
+  };
+
+  const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
+    let result = [...jobsToFilter];
+    
+    Object.entries(columnFilters).forEach(([key, value]) => {
+      if (value) {
+        result = result.filter(job => {
+          if (key === 'status') {
+            if (job.isFixed && value.toLowerCase().includes('fix')) return true;
+            if (job.isBeingChecked && value.toLowerCase().includes('check')) return true;
+            if (!job.isFixed && !job.isBeingChecked && value.toLowerCase().includes('fail')) return true;
+            return false;
+          } else if (key === 'assignedTo') {
+            if (job.fixedBy && job.fixedBy.toLowerCase().includes(value.toLowerCase())) return true;
+            if (job.checkedBy && job.checkedBy.toLowerCase().includes(value.toLowerCase())) return true;
+            return false;
+          } else if (key === 'error') {
+            return job.errorMessage?.toLowerCase().includes(value.toLowerCase()) || false;
+          } else if (key === 'orderDate') {
+            return true;
+          } else {
+            const jobValue = job[key as keyof Job];
+            return jobValue && String(jobValue).toLowerCase().includes(value.toLowerCase());
+          }
+        });
       }
-
-      const data: Job[] = await response.json();
-      setFailedJobs(data);
-    } catch (error) {
-      console.error("Could not fetch failed jobs:", error);
+    });
+    
+    if (!filters.showFixed) {
+      result = result.filter(job => !job.isFixed);
     }
-  }, [apiKey, endpoint]);
-
-  useEffect(() => {
-    fetchFailedJobs();
-  }, [fetchFailedJobs]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [failedJobs, filters, selectedDate]);
-
-  const applyFilters = () => {
-    let filtered = [...failedJobs];
-
-    if (filters.showFixed) {
-      filtered = filtered.filter(job => !job.fixed);
-    }
-
+    
     if (filters.todayOnly) {
       const today = new Date();
-      filtered = filtered.filter(job => {
-        const jobDate = new Date(job.startTime);
-        return (
-          jobDate.getDate() === today.getDate() &&
-          jobDate.getMonth() === today.getMonth() &&
-          jobDate.getFullYear() === today.getFullYear()
-        );
+      today.setHours(0, 0, 0, 0);
+      result = result.filter(job => {
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
+        return jobDate >= today;
+      });
+    } else if (selectedDate) {
+      const filterDate = new Date(selectedDate);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(filterDate.getDate() + 1);
+      
+      result = result.filter(job => {
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
+        return jobDate >= filterDate && jobDate < nextDay;
       });
     }
-
-    if (selectedDate) {
-      filtered = filtered.filter(job => {
-        const jobDate = new Date(job.startTime);
-        return (
-          jobDate.getDate() === selectedDate.getDate() &&
-          jobDate.getMonth() === selectedDate.getMonth() &&
-          jobDate.getFullYear() === selectedDate.getFullYear()
-        );
-      });
-    }
-
-    if (sortConfig.key) {
-      filtered = [...filtered].sort((a, b) => {
-        const key = sortConfig.key as keyof Job;
-        const direction = sortConfig.direction === 'ascending' ? 1 : -1;
-
-        if (key === 'jobName' || key === 'folderName' || key === 'status') {
-          return a[key].localeCompare(b[key]) * direction;
-        } else if (key === 'startTime' || key === 'endTime') {
-          return (new Date(a[key]).getTime() - new Date(b[key]).getTime()) * direction;
-        } else if (typeof a[key] === 'number') {
-          return (Number(a[key]) - Number(b[key])) * direction;
-        } else {
-          return 0;
+    
+    if (sortConfig.field) {
+      result = [...result].sort((a, b) => {
+        const aValue = a[sortConfig.field];
+        const bValue = b[sortConfig.field];
+        
+        if (sortConfig.field === 'orderDate' || sortConfig.field === 'startTime' || sortConfig.field === 'endTime') {
+          const dateA = aValue ? new Date(aValue as string).getTime() : 0;
+          const dateB = bValue ? new Date(bValue as string).getTime() : 0;
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        } 
+        else if (sortConfig.field === 'status') {
+          const statusA = a.isFixed ? 2 : (a.isBeingChecked ? 1 : 0);
+          const statusB = b.isFixed ? 2 : (b.isBeingChecked ? 1 : 0);
+          return sortConfig.direction === 'asc' ? statusA - statusB : statusB - statusA;
+        }
+        else {
+          const strA = aValue !== undefined ? String(aValue) : '';
+          const strB = bValue !== undefined ? String(bValue) : '';
+          
+          if (sortConfig.direction === 'asc') {
+            return strA.localeCompare(strB);
+          } else {
+            return strB.localeCompare(strA);
+          }
         }
       });
     }
-
-    setFilteredJobs(filtered);
+    
+    setFilteredJobs(result);
   };
 
-  const handleFilterChange = (filterKey: string, value: boolean) => {
-    setFilters(prevFilters => ({
-      ...prevFilters,
-      [filterKey]: value,
+  const handleFilterChange = (field: string, value: string | boolean) => {
+    if (field === 'todayOnly' && value === true) {
+      setSelectedDate(undefined);
+    }
+    
+    const newFilters = { ...filters, [field]: value };
+    setFilters(newFilters);
+  };
+
+  const handleColumnFilter = (field: string, value: string) => {
+    const newColumnFilters = { ...columnFilters, [field]: value };
+    setColumnFilters(newColumnFilters);
+  };
+
+  const handleSortChange = (field: SortField) => {
+    setSortConfig((prevSort) => ({
+      field,
+      direction: prevSort.field === field && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
+    
+    if (date) {
+      setFilters(prev => ({...prev, todayOnly: false}));
+    }
   };
 
   const handleJobClick = (job: Job) => {
-    window.open(job.logLink, '_blank');
+    if (selectedJobs.length > 0) {
+      toggleJobSelection(job.id);
+    } else {
+      setSelectedJob(job);
+    }
+  };
+
+  const saveComment = () => {
+    if (!selectedJob && selectedJobs.length === 0) return;
+    
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
+      
+      toast({
+        title: "Comments saved",
+        description: `Comments updated for ${selectedJobs.length} jobs`,
+      });
+    } else if (selectedJob) {
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === selectedJob.id ? selectedJob : job
+        )
+      );
+      
+      applyFiltersAndSort();
+      
+      toast({
+        title: "Comment saved",
+        description: `Comment for ${selectedJob.name} was successfully saved`,
+      });
+    }
+  };
+
+  const markAsChecking = () => {
+    if (!selectedJob && selectedJobs.length === 0) return;
+    
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            isBeingChecked: true,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution,
+            checkedBy: currentUser
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
+      
+      toast({
+        title: "Status updated",
+        description: `${selectedJobs.length} jobs marked as "Being checked" by ${currentUser}`,
+      });
+    } else if (selectedJob) {
+      const updatedJob = { 
+        ...selectedJob, 
+        isBeingChecked: true,
+        checkedBy: currentUser
+      };
+      setSelectedJob(updatedJob);
+      
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === updatedJob.id ? updatedJob : job
+        )
+      );
+      
+      applyFiltersAndSort();
+      
+      toast({
+        title: "Status updated",
+        description: `${updatedJob.name} marked as "Being checked" by ${currentUser}`,
+      });
+    }
+  };
+
+  const markAsFixed = () => {
+    if (!selectedJob && selectedJobs.length === 0) return;
+    
+    if (selectedJobs.length > 0) {
+      const updatedJobs = failedJobs.map(job => {
+        if (selectedJobs.includes(job.id)) {
+          return {
+            ...job,
+            isFixed: true,
+            isBeingChecked: false,
+            comment: bulkComment || job.comment,
+            solution: bulkSolution || job.solution,
+            fixedBy: currentUser,
+            checkedBy: job.checkedBy
+          };
+        }
+        return job;
+      });
+      
+      setFailedJobs(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
+      
+      toast({
+        title: "Status updated",
+        description: `${selectedJobs.length} jobs marked as "Fixed" by ${currentUser}`,
+      });
+    } else if (selectedJob) {
+      const updatedJob = { 
+        ...selectedJob, 
+        isFixed: true, 
+        isBeingChecked: false,
+        fixedBy: currentUser,
+        checkedBy: selectedJob.checkedBy
+      };
+      setSelectedJob(updatedJob);
+      
+      setFailedJobs(prev => 
+        prev.map(job => 
+          job.id === updatedJob.id ? updatedJob : job
+        )
+      );
+      
+      applyFiltersAndSort();
+      
+      toast({
+        title: "Status updated",
+        description: `${updatedJob.name} marked as "Fixed" by ${currentUser}`,
+      });
+    }
+  };
+
+  const refreshJobs = () => {
+    fetchFailedJobs();
+    toast({
+      title: "Refreshing jobs",
+      description: "Fetching failed jobs...",
+    });
+  };
+  
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      filteredJobs.map(job => ({
+        ID: job.id,
+        Name: job.name,
+        Status: job.status,
+        Application: job.application || 'N/A',
+        SubApplication: job.subApplication || 'N/A',
+        Folder: job.folder || 'N/A',
+        OrderDate: job.orderDate ? new Date(job.orderDate).toLocaleString() : 'N/A',
+        StartTime: job.startTime ? new Date(job.startTime).toLocaleString() : 'N/A',
+        EndTime: job.endTime ? new Date(job.endTime).toLocaleString() : 'N/A',
+        Error: job.errorMessage || 'N/A',
+        Comment: job.comment || 'N/A',
+        Solution: job.solution || 'N/A',
+        JobStatus: job.isFixed ? `Fixed by ${job.fixedBy || 'Unknown'}` : 
+                  (job.isBeingChecked ? `Being checked by ${job.checkedBy || 'Unknown'}` : 'Failed')
+      }))
+    );
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Failed Jobs');
+    
+    const dateStr = selectedDate 
+      ? format(selectedDate, 'yyyy-MM-dd')
+      : filters.todayOnly 
+        ? format(new Date(), 'yyyy-MM-dd') 
+        : 'all-dates';
+    
+    XLSX.writeFile(workbook, `control-m-failed-jobs-${dateStr}.xlsx`);
+    
+    toast({
+      title: "Export successful",
+      description: "Failed jobs exported to Excel",
+    });
   };
 
   const toggleJobSelection = (jobId: string) => {
-    setSelectedJobs(prevSelected => {
-      if (prevSelected.includes(jobId)) {
-        return prevSelected.filter(id => id !== jobId);
+    setSelectedJobs(prev => {
+      if (prev.includes(jobId)) {
+        return prev.filter(id => id !== jobId);
       } else {
-        return [...prevSelected, jobId];
+        return [...prev, jobId];
       }
     });
   };
 
-  const selectAllJobs = (checked: boolean) => {
-    if (checked) {
-      setSelectedJobs(filteredJobs.map(job => job.id));
-    } else {
+  const selectAllJobs = () => {
+    if (selectedJobs.length === filteredJobs.length) {
       setSelectedJobs([]);
+    } else {
+      setSelectedJobs(filteredJobs.map(job => job.id));
     }
   };
 
   const clearSelection = () => {
     setSelectedJobs([]);
+    setBulkComment('');
+    setBulkSolution('');
   };
 
-  const handleSort = (key: string) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
+  const getStatusBadge = (job: Job) => {
+    if (job.isFixed) {
+      return (
+        <Badge variant="default" className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" /> 
+          Fixed
+        </Badge>
+      );
+    } else if (job.isBeingChecked) {
+      return (
+        <Badge variant="secondary" className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200">
+          <Clock className="h-3 w-3 mr-1" /> 
+          Being checked
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="destructive">
+          <AlertCircle className="h-3 w-3 mr-1" /> FAILED
+        </Badge>
+      );
     }
-    setSortConfig({ key, direction });
   };
 
-  const getSortButton = (column: Column) => {
-    if (!column.sortable) return null;
-
-    let arrow = null;
-    if (sortConfig.key === column.id) {
-      arrow = sortConfig.direction === 'ascending' ? '▲' : '▼';
+  const getUserInfo = (job: Job) => {
+    if (job.isFixed && job.fixedBy) {
+      return (
+        <div className="flex items-center text-sm text-green-700 dark:text-green-400">
+          <User className="h-3 w-3 mr-1" /> 
+          {job.fixedBy}
+        </div>
+      );
+    } else if (job.isBeingChecked && job.checkedBy) {
+      return (
+        <div className="flex items-center text-sm text-yellow-700 dark:text-yellow-400">
+          <User className="h-3 w-3 mr-1" /> 
+          {job.checkedBy}
+        </div>
+      );
+    } else {
+      return null;
     }
-
-    return (
-      <Button variant="ghost" size="sm" onClick={() => handleSort(column.id)} className="gap-1">
-        {column.label} {arrow}
-      </Button>
-    );
   };
 
-  const handleColumnVisibility = (id: string) => {
-    setColumns(prevColumns =>
-      prevColumns.map(column =>
-        column.id === id ? { ...column, visible: !column.visible } : column
-      )
-    );
+  const getColumnFilterIcon = (field: string) => {
+    return columnFilters[field] ? <Filter className="h-3 w-3 text-primary" /> : <Filter className="h-3 w-3 text-gray-400" />;
   };
 
-  const getFilterDropdown = (column: Column) => {
-    if (!column.filterable) return null;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm">
-            Filter
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56">
-          <div className="p-2">
-            <Label htmlFor="filter" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed">
-              Filter by {column.label}
-            </Label>
-            <Input type="text" id="filter" placeholder={`Filter ${column.label}...`} />
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+  const getSortIcon = (field: string) => {
+    if (sortConfig.field !== field as SortField) {
+      return null;
+    }
+    
+    if (['name', 'application', 'subApplication', 'folder', 'errorMessage'].includes(field)) {
+      return sortConfig.direction === 'asc' ? 
+        <ArrowUpAZ className="h-3 w-3" /> : 
+        <ArrowDownAZ className="h-3 w-3" />;
+    } else {
+      return sortConfig.direction === 'asc' ? 
+        <ArrowUp className="h-3 w-3" /> : 
+        <ArrowDown className="h-3 w-3" />;
+    }
   };
 
-  const refreshJobs = () => {
-    fetchFailedJobs();
+  const handleResizeEnd = (columnId: string, newSize: number) => {
+    setColumns(columns.map(col => 
+      col.id === columnId ? { ...col, width: newSize } : col
+    ));
+  };
+
+  const handleDragStart = (columnId: string) => {
+    setDraggedColumn(columnId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault();
+    if (draggedColumn && draggedColumn !== columnId) {
+      const updatedColumns = [...columns];
+      const draggedIndex = updatedColumns.findIndex(col => col.id === draggedColumn);
+      const targetIndex = updatedColumns.findIndex(col => col.id === columnId);
+      
+      const draggedOrder = updatedColumns[draggedIndex].order;
+      updatedColumns[draggedIndex].order = updatedColumns[targetIndex].order;
+      updatedColumns[targetIndex].order = draggedOrder;
+      
+      setColumns(updatedColumns.sort((a, b) => a.order - b.order));
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
+  const getSortedColumns = () => {
+    return [...columns].sort((a, b) => a.order - b.order);
   };
 
   const renderCellContent = (job: Job, columnId: string) => {
     switch (columnId) {
       case 'checkbox':
         return (
-          <Checkbox
+          <Checkbox 
             checked={selectedJobs.includes(job.id)}
             onCheckedChange={() => toggleJobSelection(job.id)}
+            onClick={(e) => e.stopPropagation()}
           />
         );
-      case 'jobName':
-        return job.jobName;
-      case 'folderName':
-        return job.folderName;
+      case 'name':
+        return job.name;
+      case 'application':
+        return job.application || 'N/A';
+      case 'subApplication':
+        return job.subApplication || 'N/A';
+      case 'folder':
+        return job.folder || 'N/A';
       case 'status':
-        return job.status;
-      case 'startTime':
-        return format(new Date(job.startTime), 'yyyy-MM-dd HH:mm:ss');
-      case 'endTime':
-        return format(new Date(job.endTime), 'yyyy-MM-dd HH:mm:ss');
-      case 'duration':
-        return job.duration;
-      case 'retries':
-        return job.retries.toString();
-      case 'logLink':
-        return (
-          <a href={job.logLink} target="_blank" rel="noopener noreferrer">
-            View Log
-          </a>
-        );
+        return getStatusBadge(job);
+      case 'assignedTo':
+        return getUserInfo(job);
+      case 'orderDate':
+        return job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A';
+      case 'error':
+        return job.errorMessage || 'N/A';
       default:
         return null;
     }
   };
 
-  const exportToExcel = () => {
-    const visibleColumns = columns.filter(col => col.visible && col.id !== 'checkbox');
-    const data = filteredJobs.map(job => {
-      const row: { [key: string]: any } = {};
-      visibleColumns.forEach(column => {
-        row[column.label] = renderCellContent(job, column.id);
-      });
-      return row;
-    });
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Failed Jobs');
-    XLSX.writeFile(wb, 'failed_jobs.xlsx');
-  };
-
-  const handleDragStart = (columnId: string) => {
-    console.log("Drag start for column:", columnId);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>, columnId: string) => {
-    e.preventDefault();
-    console.log("Drag over column:", columnId);
-  };
-
-  const handleDragEnd = () => {
-    console.log("Drag end");
-  };
-
-  const handleResizeEnd = (columnId: string, size: number) => {
-    setResizingColumn(null);
-    setColumns(prevColumns =>
-      prevColumns.map(column =>
-        column.id === columnId ? { ...column, width: size } : column
-      )
+  const getFilterDropdown = (column: ColumnConfig) => {
+    if (!column.filterable) return null;
+    
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+            {getColumnFilterIcon(column.id)}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <div className="p-2">
+            <Input 
+              placeholder={`Filter ${column.label.toLowerCase()}`}
+              value={columnFilters[column.id] || ''}
+              onChange={(e) => handleColumnFilter(column.id, e.target.value)}
+              className="h-8 mb-2"
+            />
+            <div className="flex justify-between mt-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleColumnFilter(column.id, '')}
+              >
+                Clear
+              </Button>
+              <Button 
+                size="sm"
+                onClick={() => document.body.click()} // close dropdown
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
-  const getSortedColumns = () => {
-    return columnOrder.map(id => columns.find(col => col.id === id)!).filter(Boolean);
-  };
-
-  const ResizableHandle = ({ onResizeEnd }: { onResizeEnd: (size: number) => void }) => {
-    const [startWidth, setStartWidth] = useState(0);
-    const [startPosition, setStartPosition] = useState(0);
-    const [isResizing, setIsResizing] = useState(false);
-
-    const handleMouseDown = useCallback((event: React.MouseEvent) => {
-      setIsResizing(true);
-      setStartPosition(event.clientX);
-      setStartWidth(event.currentTarget.parentElement?.offsetWidth || 0);
-      setResizingColumn(event.currentTarget.parentElement?.dataset.columnId || null);
-    }, []);
-
-    const handleMouseUp = useCallback(() => {
-      setIsResizing(false);
-      setResizingColumn(null);
-    }, []);
-
-    const handleMouseMove = useCallback((event: MouseEvent) => {
-      if (!isResizing) return;
-
-      const movement = event.clientX - startPosition;
-      const newWidth = startWidth + movement;
-
-      if (newWidth > 50) {
-        onResizeEnd(newWidth);
-      }
-    }, [isResizing, startPosition, startWidth, onResizeEnd]);
-
-    useEffect(() => {
-      if (isResizing) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-      }
-
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }, [isResizing, handleMouseMove, handleMouseUp]);
-
+  const getSortButton = (column: ColumnConfig) => {
+    if (!column.sortable) return null;
+    
     return (
-      <div
-        className="absolute top-0 right-0 h-full w-1 cursor-col-resize opacity-0 hover:bg-accent group-hover:opacity-100"
-        onMouseDown={handleMouseDown}
-      />
+      <div 
+        className="cursor-pointer flex items-center gap-1" 
+        onClick={() => handleSortChange(column.id as SortField)}
+      >
+        {column.label}
+        {getSortIcon(column.id)}
+      </div>
     );
   };
 
   return (
-    <div className="w-full">
-      <Card className="p-4 sm:p-6">
-        <CardHeader>
-          <CardTitle>Failed Jobs Monitor</CardTitle>
-          <CardDescription>Monitor failed jobs here.</CardDescription>
-        </CardHeader>
-        
-        <CardFooter>
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card className="p-6 lg:col-span-2">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold">Failed Jobs Monitor</h2>
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={refreshJobs}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
@@ -413,155 +768,285 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
             </Button>
           </div>
-        </CardFooter>
+        </div>
         
-        <CardContent>
-          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                variant={filters.showFixed ? "default" : "outline"} 
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Button 
+            variant={filters.showFixed ? "default" : "outline"} 
+            size="sm"
+            onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
+            className="mr-2"
+          >
+            {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
+          </Button>
+          
+          <Button 
+            variant={filters.todayOnly ? "default" : "outline"} 
+            size="sm"
+            onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
+            className="mr-2"
+          >
+            <CalendarIcon className="h-4 w-4 mr-1" />
+            {filters.todayOnly ? "All Dates" : "Today Only"}
+          </Button>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={selectedDate ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
-              >
-                {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
-              </Button>
-              
-              <Button 
-                variant={filters.todayOnly ? "default" : "outline"} 
-                size="sm"
-                onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
+                className={cn(
+                  "mr-2",
+                  selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
               >
                 <CalendarIcon className="h-4 w-4 mr-1" />
-                {filters.todayOnly ? "All Dates" : "Today Only"}
+                {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
               </Button>
-              
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={selectedDate ? "default" : "outline"}
-                    size="sm"
-                    className={cn(
-                      selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
-                    )}
-                  >
-                    <CalendarIcon className="h-4 w-4 mr-1" />
-                    {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                    className="p-3"
-                  />
-                </PopoverContent>
-              </Popover>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="select-all" 
+                checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
+                onCheckedChange={selectAllJobs}
+              />
+              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                Select all
+              </label>
             </div>
             
-            <div className="flex-1 w-full sm:w-auto flex flex-wrap items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="select-all" 
-                  checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
-                  onCheckedChange={selectAllJobs}
-                />
-                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer whitespace-nowrap">
-                  Select all
-                </label>
+            {selectedJobs.length > 0 && (
+              <Button size="sm" variant="outline" onClick={clearSelection}>
+                Clear selection ({selectedJobs.length})
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-500">
+            Showing {filteredJobs.length} of {failedJobs.length} failed jobs
+          </span>
+          {selectedJobs.length > 0 && (
+            <span className="text-sm text-primary font-medium">
+              {selectedJobs.length} jobs selected
+            </span>
+          )}
+        </div>
+        
+        <ScrollArea className="h-[500px] w-full border rounded-md" orientation="both">
+          <div className="min-w-max">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  {getSortedColumns().filter(col => col.visible).map((column) => (
+                    <TableHead 
+                      key={column.id}
+                      style={{ width: `${column.width}%` }}
+                      className="relative group"
+                      draggable={column.id !== 'checkbox'}
+                      onDragStart={() => handleDragStart(column.id)}
+                      onDragOver={(e) => handleDragOver(e, column.id)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <div className="flex items-center gap-1">
+                        {column.id !== 'checkbox' && (
+                          <div 
+                            className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Drag to reorder column"
+                          >
+                            <GripHorizontal className="h-4 w-4 text-gray-400" />
+                          </div>
+                        )}
+                        
+                        {column.sortable ? (
+                          getSortButton(column)
+                        ) : (
+                          <div>{column.label}</div>
+                        )}
+                        
+                        {column.filterable && getFilterDropdown(column)}
+                      </div>
+                      
+                      {column.id !== 'checkbox' && (
+                        <div 
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize group-hover:bg-primary/50"
+                          onMouseDown={(e) => {
+                            const startX = e.clientX;
+                            const startWidth = column.width;
+                            
+                            const handleMouseMove = (moveEvent: MouseEvent) => {
+                              const deltaX = moveEvent.clientX - startX;
+                              const newWidth = Math.max(5, startWidth + (deltaX / 10));
+                              handleResizeEnd(column.id, newWidth);
+                            };
+                            
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                            };
+                            
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        />
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredJobs.map(job => (
+                  <TableRow 
+                    key={job.id}
+                    className={cn(
+                      "cursor-pointer",
+                      selectedJobs.includes(job.id) && "bg-primary/10",
+                      selectedJob?.id === job.id && !selectedJobs.length && "bg-primary/10"
+                    )}
+                    onClick={() => handleJobClick(job)}
+                  >
+                    {getSortedColumns().filter(col => col.visible).map(column => (
+                      <TableCell key={`${job.id}-${column.id}`}>
+                        {renderCellContent(job, column.id)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
+      </Card>
+      
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          {selectedJobs.length > 0 ? `Bulk Edit (${selectedJobs.length} jobs)` : 'Job Details'}
+        </h2>
+        
+        {selectedJobs.length > 0 ? (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Bulk Comment</label>
+              <Textarea 
+                placeholder="Add a comment for all selected jobs"
+                className="mt-1"
+                value={bulkComment}
+                onChange={(e) => setBulkComment(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Bulk Solution</label>
+              <Textarea 
+                placeholder="Add a solution for all selected jobs"
+                className="mt-1"
+                value={bulkSolution}
+                onChange={(e) => setBulkSolution(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveComment}>
+                Save Comments
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={markAsChecking}
+              >
+                <Clock className="h-4 w-4 mr-1" /> 
+                Mark as Checking
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={markAsFixed}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" /> 
+                Mark as Fixed
+              </Button>
+            </div>
+          </div>
+        ) : selectedJob ? (
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium">{selectedJob.name}</h3>
+              <div className="text-sm text-gray-500 mt-1">
+                {selectedJob.application} / {selectedJob.subApplication} / {selectedJob.folder}
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex gap-2 items-center mt-2">
+                {getStatusBadge(selectedJob)}
+                {getUserInfo(selectedJob)}
               </div>
               
-              {selectedJobs.length > 0 && (
-                <Button size="sm" variant="outline" onClick={clearSelection}>
-                  Clear selection ({selectedJobs.length})
+              <div className="text-sm mt-2">
+                <span className="font-medium">Error:</span> {selectedJob.errorMessage || 'N/A'}
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium">Comment</label>
+                <Textarea 
+                  placeholder="Add a comment"
+                  className="mt-1"
+                  value={selectedJob.comment || ''}
+                  onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                />
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium">Solution</label>
+                <Textarea 
+                  placeholder="Add a solution"
+                  className="mt-1"
+                  value={selectedJob.solution || ''}
+                  onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveComment}>
+                Save Comment
+              </Button>
+              {!selectedJob.isBeingChecked && !selectedJob.isFixed && (
+                <Button 
+                  variant="secondary" 
+                  onClick={markAsChecking}
+                >
+                  <Clock className="h-4 w-4 mr-1" /> 
+                  Mark as Checking
+                </Button>
+              )}
+              {!selectedJob.isFixed && (
+                <Button 
+                  variant="default" 
+                  onClick={markAsFixed}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" /> 
+                  Mark as Fixed
                 </Button>
               )}
             </div>
           </div>
-          
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <span className="text-sm text-gray-500">
-              Showing {filteredJobs.length} of {failedJobs.length} failed jobs
-            </span>
-            {selectedJobs.length > 0 && (
-              <span className="text-sm text-primary font-medium">
-                {selectedJobs.length} jobs selected
-              </span>
-            )}
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            Select a job to view details
           </div>
-          
-          <ScrollArea className="h-[calc(100vh-20rem)] w-full border rounded-md" orientation="both">
-            <div className="min-w-max">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    {getSortedColumns().filter(col => col.visible).map((column) => (
-                      <TableHead 
-                        key={column.id}
-                        style={{ 
-                          width: `${column.width}%`,
-                          minWidth: column.id === 'checkbox' ? '40px' : '120px'
-                        }}
-                        className="relative group"
-                        draggable={column.id !== 'checkbox'}
-                        onDragStart={() => handleDragStart(column.id)}
-                        onDragOver={(e) => handleDragOver(e, column.id)}
-                        onDragEnd={handleDragEnd}
-                        data-column-id={column.id}
-                      >
-                        <div className="flex items-center gap-1">
-                          {column.id !== 'checkbox' && (
-                            <div 
-                              className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Drag to reorder column"
-                            >
-                              <GripHorizontal className="h-4 w-4 text-gray-400" />
-                            </div>
-                          )}
-                          
-                          {column.sortable ? (
-                            getSortButton(column)
-                          ) : (
-                            <div>{column.label}</div>
-                          )}
-                          
-                          {column.filterable && getFilterDropdown(column)}
-                        </div>
-                        
-                        {column.id !== 'checkbox' && (
-                          <ResizableHandle 
-                            onResizeEnd={(size) => handleResizeEnd(column.id, size)}
-                          />
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredJobs.map((job) => (
-                    <TableRow 
-                      key={job.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleJobClick(job)}
-                    >
-                      {getSortedColumns()
-                        .filter(col => col.visible)
-                        .map((column) => (
-                          <TableCell 
-                            key={column.id}
-                            className="overflow-hidden text-ellipsis whitespace-nowrap"
-                          >
-                            {renderCellContent(job, column.id)}
-                          </TableCell>
-                        ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </ScrollArea>
-        </CardContent>
+        )}
       </Card>
     </div>
   );
