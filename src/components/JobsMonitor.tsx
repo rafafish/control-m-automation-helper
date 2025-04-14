@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -729,433 +730,439 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="p-6 lg:col-span-2">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">Failed Jobs Monitor</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={refreshJobs}>
-              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={exportToExcel}
-              className="flex items-center"
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <Button 
-            variant={filters.showFixed ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
-            className="mr-2"
-          >
-            {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
-          </Button>
-          
-          <Button 
-            variant={filters.todayOnly ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
-            className="mr-2"
-          >
-            <CalendarIcon className="h-4 w-4 mr-1" />
-            {filters.todayOnly ? "All Dates" : "Today Only"}
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={selectedDate ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "mr-2",
-                  selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-              >
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          
-          <div className="ml-auto flex items-center gap-2">
+    <ResizablePanelGroup direction="horizontal" className="w-full rounded-lg">
+      <ResizablePanel defaultSize={70} minSize={30}>
+        <Card className="p-6 h-full">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Failed Jobs Monitor</h2>
             <div className="flex items-center gap-2">
-              <Checkbox 
-                id="select-all" 
-                checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
-                onCheckedChange={selectAllJobs}
-              />
-              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                Select all
-              </label>
-            </div>
-            
-            {selectedJobs.length > 0 && (
-              <Button size="sm" variant="outline" onClick={clearSelection}>
-                Clear selection ({selectedJobs.length})
+              <Button variant="outline" size="sm" onClick={refreshJobs}>
+                <RefreshCw className="h-4 w-4 mr-1" /> Refresh
               </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={exportToExcel}
+                className="flex items-center"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
+              </Button>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Button 
+              variant={filters.showFixed ? "default" : "outline"} 
+              size="sm"
+              onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
+              className="mr-2"
+            >
+              {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
+            </Button>
+            
+            <Button 
+              variant={filters.todayOnly ? "default" : "outline"} 
+              size="sm"
+              onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
+              className="mr-2"
+            >
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {filters.todayOnly ? "All Dates" : "Today Only"}
+            </Button>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={selectedDate ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "mr-2",
+                    selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
+                  )}
+                >
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="select-all" 
+                  checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
+                  onCheckedChange={selectAllJobs}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                  Select all
+                </label>
+              </div>
+              
+              {selectedJobs.length > 0 && (
+                <Button size="sm" variant="outline" onClick={clearSelection}>
+                  Clear selection ({selectedJobs.length})
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-500">
+              Showing {filteredJobs.length} of {failedJobs.length} failed jobs
+            </span>
+            {selectedJobs.length > 0 && (
+              <span className="text-sm text-primary font-medium">
+                {selectedJobs.length} jobs selected
+              </span>
             )}
           </div>
-        </div>
-        
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-500">
-            Showing {filteredJobs.length} of {failedJobs.length} failed jobs
-          </span>
-          {selectedJobs.length > 0 && (
-            <span className="text-sm text-primary font-medium">
-              {selectedJobs.length} jobs selected
-            </span>
-          )}
-        </div>
-        
-        <ScrollArea className="h-[500px] w-full border rounded-md" orientation="both">
-          <div className="min-w-max">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
-                <TableRow>
-                  {getSortedColumns().filter(col => col.visible).map((column) => (
-                    <TableHead 
-                      key={column.id}
-                      style={{ width: `${column.width}%` }}
-                      className="relative group"
-                      draggable={column.id !== 'checkbox'}
-                      onDragStart={() => handleDragStart(column.id)}
-                      onDragOver={(e) => handleDragOver(e, column.id)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <div className="flex items-center gap-1">
-                        {column.id !== 'checkbox' && (
-                          <div 
-                            className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Drag to reorder column"
-                          >
-                            <GripHorizontal className="h-4 w-4 text-gray-400" />
-                          </div>
-                        )}
-                        
-                        {column.id === 'name' && (
-                          <div 
-                            className="cursor-pointer flex items-center gap-1" 
-                            onClick={() => handleSortChange('name')}
-                          >
-                            {column.label}
-                            {getSortIcon('name')}
-                          </div>
-                        )}
-                        
-                        {column.id === 'application' && (
-                          <div 
-                            className="cursor-pointer flex items-center gap-1" 
-                            onClick={() => handleSortChange('application')}
-                          >
-                            {column.label}
-                            {getSortIcon('application')}
-                          </div>
-                        )}
-                        
-                        {column.id === 'subApplication' && (
-                          <div 
-                            className="cursor-pointer flex items-center gap-1" 
-                            onClick={() => handleSortChange('subApplication')}
-                          >
-                            {column.label}
-                            {getSortIcon('subApplication')}
-                          </div>
-                        )}
-                        
-                        {column.id === 'folder' && (
-                          <div 
-                            className="cursor-pointer flex items-center gap-1" 
-                            onClick={() => handleSortChange('folder')}
-                          >
-                            {column.label}
-                            {getSortIcon('folder')}
-                          </div>
-                        )}
-                        
-                        {column.id === 'orderDate' && (
-                          <div 
-                            className="cursor-pointer flex items-center gap-1" 
-                            onClick={() => handleSortChange('orderDate')}
-                          >
-                            {column.label}
-                            {getSortIcon('orderDate')}
-                          </div>
-                        )}
-                        
-                        {!['checkbox', 'name', 'application', 'subApplication', 'folder', 'orderDate'].includes(column.id) && (
-                          <div>{column.label}</div>
-                        )}
-                        
-                        {['name', 'application', 'subApplication', 'folder'].includes(column.id) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                                {getColumnFilterIcon(column.id as keyof typeof columnFilters)}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <div className="p-2">
-                                <Input 
-                                  placeholder={`Filter ${column.label.toLowerCase()}`}
-                                  value={columnFilters[column.id as keyof typeof columnFilters]}
-                                  onChange={(e) => handleColumnFilter(column.id as keyof typeof columnFilters, e.target.value)}
-                                  className="h-8 mb-2"
-                                />
-                                <div className="flex justify-between mt-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => handleColumnFilter(column.id as keyof typeof columnFilters, '')}
-                                  >
-                                    Clear
-                                  </Button>
-                                  <Button 
-                                    size="sm"
-                                    onClick={() => document.body.click()} // close dropdown
-                                  >
-                                    Apply
-                                  </Button>
-                                </div>
-                              </div>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                      
-                      {/* Column resize handle */}
-                      {column.id !== 'checkbox' && (
-                        <div
-                          className="absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-gray-400 cursor-col-resize"
-                          onMouseDown={(e) => {
-                            const startX = e.clientX;
-                            const startWidth = column.width;
-                            
-                            const handleMouseMove = (e: MouseEvent) => {
-                              const diff = e.clientX - startX;
-                              const newWidth = Math.max(5, startWidth + (diff * 0.1));
-                              handleResizeEnd(column.id, newWidth);
-                            };
-                            
-                            const handleMouseUp = () => {
-                              document.removeEventListener('mousemove', handleMouseMove);
-                              document.removeEventListener('mouseup', handleMouseUp);
-                            };
-                            
-                            document.addEventListener('mousemove', handleMouseMove);
-                            document.addEventListener('mouseup', handleMouseUp);
-                          }}
-                        />
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredJobs.map((job) => (
-                  <TableRow 
-                    key={job.id}
-                    className={cn(
-                      "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
-                      selectedJob?.id === job.id ? "bg-muted" : "",
-                      job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
-                      job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
-                    )}
-                    onClick={() => handleJobClick(job)}
-                  >
+          
+          <ScrollArea className="h-[500px] w-full border rounded-md" orientation="both">
+            <div className="min-w-max">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
                     {getSortedColumns().filter(col => col.visible).map((column) => (
-                      <TableCell key={`${job.id}-${column.id}`} className="p-2">
-                        {renderCellContent(job, column.id)}
-                      </TableCell>
+                      <TableHead 
+                        key={column.id}
+                        style={{ width: `${column.width}%` }}
+                        className="relative group"
+                        draggable={column.id !== 'checkbox'}
+                        onDragStart={() => handleDragStart(column.id)}
+                        onDragOver={(e) => handleDragOver(e, column.id)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <div className="flex items-center gap-1">
+                          {column.id !== 'checkbox' && (
+                            <div 
+                              className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Drag to reorder column"
+                            >
+                              <GripHorizontal className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
+                          
+                          {column.id === 'name' && (
+                            <div 
+                              className="cursor-pointer flex items-center gap-1" 
+                              onClick={() => handleSortChange('name')}
+                            >
+                              {column.label}
+                              {getSortIcon('name')}
+                            </div>
+                          )}
+                          
+                          {column.id === 'application' && (
+                            <div 
+                              className="cursor-pointer flex items-center gap-1" 
+                              onClick={() => handleSortChange('application')}
+                            >
+                              {column.label}
+                              {getSortIcon('application')}
+                            </div>
+                          )}
+                          
+                          {column.id === 'subApplication' && (
+                            <div 
+                              className="cursor-pointer flex items-center gap-1" 
+                              onClick={() => handleSortChange('subApplication')}
+                            >
+                              {column.label}
+                              {getSortIcon('subApplication')}
+                            </div>
+                          )}
+                          
+                          {column.id === 'folder' && (
+                            <div 
+                              className="cursor-pointer flex items-center gap-1" 
+                              onClick={() => handleSortChange('folder')}
+                            >
+                              {column.label}
+                              {getSortIcon('folder')}
+                            </div>
+                          )}
+                          
+                          {column.id === 'orderDate' && (
+                            <div 
+                              className="cursor-pointer flex items-center gap-1" 
+                              onClick={() => handleSortChange('orderDate')}
+                            >
+                              {column.label}
+                              {getSortIcon('orderDate')}
+                            </div>
+                          )}
+                          
+                          {!['checkbox', 'name', 'application', 'subApplication', 'folder', 'orderDate'].includes(column.id) && (
+                            <div>{column.label}</div>
+                          )}
+                          
+                          {['name', 'application', 'subApplication', 'folder'].includes(column.id) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                  {getColumnFilterIcon(column.id as keyof typeof columnFilters)}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <div className="p-2">
+                                  <Input 
+                                    placeholder={`Filter ${column.label.toLowerCase()}`}
+                                    value={columnFilters[column.id as keyof typeof columnFilters]}
+                                    onChange={(e) => handleColumnFilter(column.id as keyof typeof columnFilters, e.target.value)}
+                                    className="h-8 mb-2"
+                                  />
+                                  <div className="flex justify-between mt-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleColumnFilter(column.id as keyof typeof columnFilters, '')}
+                                    >
+                                      Clear
+                                    </Button>
+                                    <Button 
+                                      size="sm"
+                                      onClick={() => document.body.click()} // close dropdown
+                                    >
+                                      Apply
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        
+                        {/* Column resize handle */}
+                        {column.id !== 'checkbox' && (
+                          <div
+                            className="absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-gray-400 cursor-col-resize"
+                            onMouseDown={(e) => {
+                              const startX = e.clientX;
+                              const startWidth = column.width;
+                              
+                              const handleMouseMove = (e: MouseEvent) => {
+                                const diff = e.clientX - startX;
+                                const newWidth = Math.max(5, startWidth + (diff * 0.1));
+                                handleResizeEnd(column.id, newWidth);
+                              };
+                              
+                              const handleMouseUp = () => {
+                                document.removeEventListener('mousemove', handleMouseMove);
+                                document.removeEventListener('mouseup', handleMouseUp);
+                              };
+                              
+                              document.addEventListener('mousemove', handleMouseMove);
+                              document.addEventListener('mouseup', handleMouseUp);
+                            }}
+                          />
+                        )}
+                      </TableHead>
                     ))}
                   </TableRow>
-                ))}
-                {filteredJobs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={getSortedColumns().filter(col => col.visible).length} className="text-center py-8 text-gray-500">
-                      No failed jobs found with the applied filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </ScrollArea>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
+                    <TableRow 
+                      key={job.id}
+                      className={cn(
+                        "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
+                        selectedJob?.id === job.id ? "bg-muted" : "",
+                        job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
+                        job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
+                      )}
+                      onClick={() => handleJobClick(job)}
+                    >
+                      {getSortedColumns().filter(col => col.visible).map((column) => (
+                        <TableCell key={`${job.id}-${column.id}`} className="p-2">
+                          {renderCellContent(job, column.id)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                  {filteredJobs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={getSortedColumns().filter(col => col.visible).length} className="text-center py-8 text-gray-500">
+                        No failed jobs found with the applied filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </Card>
+      </ResizablePanel>
       
-      <Card className="p-6">
-        {selectedJobs.length > 0 ? (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">Bulk Edit ({selectedJobs.length} jobs)</h2>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Comment for all selected jobs
-              </label>
-              <Textarea
-                placeholder="Add a comment for all selected jobs"
-                value={bulkComment}
-                onChange={(e) => setBulkComment(e.target.value)}
-                className="mb-2"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Solution for all selected jobs
-              </label>
-              <Textarea
-                placeholder="Describe the solution applied to all jobs"
-                value={bulkSolution}
-                onChange={(e) => setBulkSolution(e.target.value)}
-                className="mb-4"
-              />
-            </div>
-            
-            <div className="flex justify-between">
-              <div className="space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={markAsChecking}
-                  className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
-                >
-                  <Clock className="h-4 w-4 mr-1" />
-                  Mark as checking
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={markAsFixed}
-                  className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200"
-                >
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Mark as fixed
+      <ResizableHandle withHandle />
+      
+      <ResizablePanel defaultSize={30} minSize={25}>
+        <Card className="p-6 h-full">
+          {selectedJobs.length > 0 ? (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold mb-4">Bulk Edit ({selectedJobs.length} jobs)</h2>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Comment for all selected jobs
+                </label>
+                <Textarea
+                  placeholder="Add a comment for all selected jobs"
+                  value={bulkComment}
+                  onChange={(e) => setBulkComment(e.target.value)}
+                  className="mb-2"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Solution for all selected jobs
+                </label>
+                <Textarea
+                  placeholder="Describe the solution applied to all jobs"
+                  value={bulkSolution}
+                  onChange={(e) => setBulkSolution(e.target.value)}
+                  className="mb-4"
+                />
+              </div>
+              
+              <div className="flex justify-between">
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={markAsChecking}
+                    className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
+                  >
+                    <Clock className="h-4 w-4 mr-1" />
+                    Mark as checking
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={markAsFixed}
+                    className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Mark as fixed
+                  </Button>
+                </div>
+                <Button onClick={saveComment}>
+                  Save changes
                 </Button>
               </div>
-              <Button onClick={saveComment}>
-                Save changes
-              </Button>
+              
+              <div className="mt-4 pt-4 border-t">
+                <Button variant="outline" size="sm" onClick={clearSelection} className="w-full">
+                  Return to individual editing
+                </Button>
+              </div>
             </div>
-            
-            <div className="mt-4 pt-4 border-t">
-              <Button variant="outline" size="sm" onClick={clearSelection} className="w-full">
-                Return to individual editing
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
-            {selectedJob ? (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium">{selectedJob.name}</h3>
-                  <p className="text-sm text-gray-500">ID: {selectedJob.id}</p>
-                  {selectedJob.application && (
-                    <p className="text-sm text-gray-500">Application: {selectedJob.application}</p>
-                  )}
-                  {selectedJob.subApplication && (
-                    <p className="text-sm text-gray-500">SubApplication: {selectedJob.subApplication}</p>
-                  )}
-                  {selectedJob.folder && (
-                    <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedJob.startTime && (
-                    <div className="text-sm">
-                      <span className="font-medium">Start Time:</span>
-                      <p>{format(new Date(selectedJob.startTime), "MMM dd, yyyy HH:mm:ss")}</p>
+          ) : (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
+              {selectedJob ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">{selectedJob.name}</h3>
+                    <p className="text-sm text-gray-500">ID: {selectedJob.id}</p>
+                    {selectedJob.application && (
+                      <p className="text-sm text-gray-500">Application: {selectedJob.application}</p>
+                    )}
+                    {selectedJob.subApplication && (
+                      <p className="text-sm text-gray-500">SubApplication: {selectedJob.subApplication}</p>
+                    )}
+                    {selectedJob.folder && (
+                      <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedJob.startTime && (
+                      <div className="text-sm">
+                        <span className="font-medium">Start Time:</span>
+                        <p>{format(new Date(selectedJob.startTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                      </div>
+                    )}
+                    
+                    {selectedJob.endTime && (
+                      <div className="text-sm">
+                        <span className="font-medium">End Time:</span>
+                        <p>{format(new Date(selectedJob.endTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {selectedJob.errorMessage && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+                      <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
+                      <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
                     </div>
                   )}
                   
-                  {selectedJob.endTime && (
-                    <div className="text-sm">
-                      <span className="font-medium">End Time:</span>
-                      <p>{format(new Date(selectedJob.endTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Comment
+                    </label>
+                    <Textarea
+                      placeholder="Add a comment about the error"
+                      value={selectedJob.comment || ''}
+                      onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                      className="mb-2"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Solution
+                    </label>
+                    <Textarea
+                      placeholder="Describe the applied solution"
+                      value={selectedJob.solution || ''}
+                      onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                      className="mb-4"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <div className="space-x-2">
+                      <Button
+                        variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
+                        onClick={markAsChecking}
+                        className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
+                      >
+                        <Clock className="h-4 w-4 mr-1" />
+                        {selectedJob.isBeingChecked ? selectedJob.checkedBy ? `Being checked by ${selectedJob.checkedBy}` : "Being checked" : "Mark as checking"}
+                      </Button>
+                      <Button
+                        variant={selectedJob.isFixed ? "default" : "outline"}
+                        onClick={markAsFixed}
+                        className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        {selectedJob.isFixed ? selectedJob.fixedBy ? `Fixed by ${selectedJob.fixedBy}` : "Fixed" : "Mark as fixed"}
+                      </Button>
                     </div>
-                  )}
-                </div>
-                
-                {selectedJob.errorMessage && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
-                    <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
-                    <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
-                  </div>
-                )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Comment
-                  </label>
-                  <Textarea
-                    placeholder="Add a comment about the error"
-                    value={selectedJob.comment || ''}
-                    onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
-                    className="mb-2"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Solution
-                  </label>
-                  <Textarea
-                    placeholder="Describe the applied solution"
-                    value={selectedJob.solution || ''}
-                    onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
-                    className="mb-4"
-                  />
-                </div>
-                
-                <div className="flex justify-between">
-                  <div className="space-x-2">
-                    <Button
-                      variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
-                      onClick={markAsChecking}
-                      className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
-                    >
-                      <Clock className="h-4 w-4 mr-1" />
-                      {selectedJob.isBeingChecked ? selectedJob.checkedBy ? `Being checked by ${selectedJob.checkedBy}` : "Being checked" : "Mark as checking"}
-                    </Button>
-                    <Button
-                      variant={selectedJob.isFixed ? "default" : "outline"}
-                      onClick={markAsFixed}
-                      className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      {selectedJob.isFixed ? selectedJob.fixedBy ? `Fixed by ${selectedJob.fixedBy}` : "Fixed" : "Mark as fixed"}
+                    <Button onClick={saveComment}>
+                      Save
                     </Button>
                   </div>
-                  <Button onClick={saveComment}>
-                    Save
-                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                Select a job to view details
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-    </div>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  Select a job to view details
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
