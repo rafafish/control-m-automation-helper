@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +78,7 @@ interface JobsMonitorProps {
   apiKey: string;
 }
 
-type SortField = keyof Job;
+type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate';
 type SortDirection = 'asc' | 'desc';
 
 type ColumnConfig = {
@@ -88,8 +87,6 @@ type ColumnConfig = {
   width: number;
   visible: boolean;
   order: number;
-  sortable: boolean;
-  filterable: boolean;
 };
 
 export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
@@ -114,26 +111,22 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState<number>(60000); // 1 minute by default
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({
+  const [columnFilters, setColumnFilters] = useState({
     name: '',
     application: '',
     subApplication: '',
     folder: '',
-    status: '',
-    errorMessage: '',
-    assignedTo: '',
-    orderDate: '',
   });
   const [columns, setColumns] = useState<ColumnConfig[]>([
-    { id: 'checkbox', label: '', width: 5, visible: true, order: 0, sortable: false, filterable: false },
-    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 1, sortable: true, filterable: true },
-    { id: 'application', label: 'Application', width: 15, visible: true, order: 2, sortable: true, filterable: true },
-    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 3, sortable: true, filterable: true },
-    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 4, sortable: true, filterable: true },
-    { id: 'status', label: 'Status', width: 10, visible: true, order: 5, sortable: true, filterable: true },
-    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 6, sortable: true, filterable: true },
-    { id: 'orderDate', label: 'Order Date', width: 10, visible: true, order: 7, sortable: true, filterable: true },
-    { id: 'error', label: 'Error', width: 20, visible: true, order: 8, sortable: true, filterable: true },
+    { id: 'checkbox', label: '', width: 5, visible: true, order: 0 },
+    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 1 },
+    { id: 'application', label: 'Application', width: 15, visible: true, order: 2 },
+    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 3 },
+    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 4 },
+    { id: 'status', label: 'Status', width: 10, visible: true, order: 5 },
+    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 6 },
+    { id: 'orderDate', label: 'Order Date', width: 10, visible: true, order: 7 },
+    { id: 'error', label: 'Error', width: 20, visible: true, order: 8 },
   ]);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   
@@ -219,7 +212,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
 
   useEffect(() => {
     applyFiltersAndSort();
-  }, [columnFilters, sortConfig, filters, selectedDate]);
+  }, [columnFilters, sortConfig]);
 
   const fetchFailedJobs = () => {
     const newJob: Job = { 
@@ -246,39 +239,24 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
-    let result = [...jobsToFilter];
+    let result = jobsToFilter;
     
-    // Apply all column filters
-    Object.entries(columnFilters).forEach(([key, value]) => {
-      if (value) {
-        result = result.filter(job => {
-          if (key === 'status') {
-            // Special handling for status which isn't directly a string
-            if (job.isFixed && value.toLowerCase().includes('fix')) return true;
-            if (job.isBeingChecked && value.toLowerCase().includes('check')) return true;
-            if (!job.isFixed && !job.isBeingChecked && value.toLowerCase().includes('fail')) return true;
-            return false;
-          } else if (key === 'assignedTo') {
-            // Special handling for assigned to
-            if (job.fixedBy && job.fixedBy.toLowerCase().includes(value.toLowerCase())) return true;
-            if (job.checkedBy && job.checkedBy.toLowerCase().includes(value.toLowerCase())) return true;
-            return false;
-          } else if (key === 'error') {
-            // Handle error field (maps to errorMessage)
-            return job.errorMessage?.toLowerCase().includes(value.toLowerCase()) || false;
-          } else if (key === 'orderDate') {
-            // Skip orderDate filtering here - handled separately
-            return true;
-          } else {
-            // Standard field filtering
-            const jobValue = job[key as keyof Job];
-            return jobValue && String(jobValue).toLowerCase().includes(value.toLowerCase());
-          }
-        });
-      }
-    });
+    if (columnFilters.name) {
+      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
+    }
     
-    // Apply special filters
+    if (columnFilters.application) {
+      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
+    }
+    
+    if (columnFilters.subApplication) {
+      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
+    }
+    
+    if (columnFilters.folder) {
+      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
+    }
+    
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -304,34 +282,20 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
     
-    // Apply sorting
     if (sortConfig.field) {
       result = [...result].sort((a, b) => {
-        const aValue = a[sortConfig.field];
-        const bValue = b[sortConfig.field];
+        const aValue = a[sortConfig.field] || '';
+        const bValue = b[sortConfig.field] || '';
         
-        // Special handling for dates
-        if (sortConfig.field === 'orderDate' || sortConfig.field === 'startTime' || sortConfig.field === 'endTime') {
-          const dateA = aValue ? new Date(aValue as string).getTime() : 0;
-          const dateB = bValue ? new Date(bValue as string).getTime() : 0;
+        if (sortConfig.field === 'orderDate') {
+          const dateA = aValue ? new Date(aValue).getTime() : 0;
+          const dateB = bValue ? new Date(bValue).getTime() : 0;
           return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
-        } 
-        // Special handling for status
-        else if (sortConfig.field === 'status') {
-          // Create a status value for sorting where fixed = 2, checking = 1, failed = 0
-          const statusA = a.isFixed ? 2 : (a.isBeingChecked ? 1 : 0);
-          const statusB = b.isFixed ? 2 : (b.isBeingChecked ? 1 : 0);
-          return sortConfig.direction === 'asc' ? statusA - statusB : statusB - statusA;
-        }
-        // Default string comparison
-        else {
-          const strA = aValue !== undefined ? String(aValue) : '';
-          const strB = bValue !== undefined ? String(bValue) : '';
-          
+        } else {
           if (sortConfig.direction === 'asc') {
-            return strA.localeCompare(strB);
+            return String(aValue).localeCompare(String(bValue));
           } else {
-            return strB.localeCompare(strA);
+            return String(bValue).localeCompare(String(aValue));
           }
         }
       });
@@ -347,9 +311,54 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
+    
+    let result = failedJobs;
+    
+    if (columnFilters.name) {
+      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
+    }
+    
+    if (columnFilters.application) {
+      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
+    }
+    
+    if (columnFilters.subApplication) {
+      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
+    }
+    
+    if (columnFilters.folder) {
+      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
+    }
+    
+    if (!newFilters.showFixed) {
+      result = result.filter(job => !job.isFixed);
+    }
+    
+    if (newFilters.todayOnly) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      result = result.filter(job => {
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
+        return jobDate >= today;
+      });
+    } else if (selectedDate) {
+      const filterDate = new Date(selectedDate);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(filterDate.getDate() + 1);
+      
+      result = result.filter(job => {
+        if (!job.orderDate) return false;
+        const jobDate = new Date(job.orderDate);
+        return jobDate >= filterDate && jobDate < nextDay;
+      });
+    }
+    
+    setFilteredJobs(result);
   };
 
-  const handleColumnFilter = (field: string, value: string) => {
+  const handleColumnFilter = (field: keyof typeof columnFilters, value: string) => {
     const newColumnFilters = { ...columnFilters, [field]: value };
     setColumnFilters(newColumnFilters);
   };
@@ -367,6 +376,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     if (date) {
       setFilters(prev => ({...prev, todayOnly: false}));
     }
+    
+    applyFiltersAndSort();
   };
 
   const handleJobClick = (job: Job) => {
@@ -626,16 +637,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  const getColumnFilterIcon = (field: string) => {
+  const getColumnFilterIcon = (field: keyof typeof columnFilters) => {
     return columnFilters[field] ? <Filter className="h-3 w-3 text-primary" /> : <Filter className="h-3 w-3 text-gray-400" />;
   };
 
-  const getSortIcon = (field: string) => {
-    if (sortConfig.field !== field as SortField) {
+  const getSortIcon = (field: SortField) => {
+    if (sortConfig.field !== field) {
       return null;
     }
     
-    if (['name', 'application', 'subApplication', 'folder', 'errorMessage'].includes(field)) {
+    if (field === 'name' || field === 'application' || field === 'subApplication' || field === 'folder') {
       return sortConfig.direction === 'asc' ? 
         <ArrowUpAZ className="h-3 w-3" /> : 
         <ArrowDownAZ className="h-3 w-3" />;
@@ -715,61 +726,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       default:
         return null;
     }
-  };
-
-  // Get filter dropdown for a column
-  const getFilterDropdown = (column: ColumnConfig) => {
-    if (!column.filterable) return null;
-    
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-            {getColumnFilterIcon(column.id)}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <div className="p-2">
-            <Input 
-              placeholder={`Filter ${column.label.toLowerCase()}`}
-              value={columnFilters[column.id] || ''}
-              onChange={(e) => handleColumnFilter(column.id, e.target.value)}
-              className="h-8 mb-2"
-            />
-            <div className="flex justify-between mt-2">
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => handleColumnFilter(column.id, '')}
-              >
-                Clear
-              </Button>
-              <Button 
-                size="sm"
-                onClick={() => document.body.click()} // close dropdown
-              >
-                Apply
-              </Button>
-            </div>
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
-  // Get sort button for a column
-  const getSortButton = (column: ColumnConfig) => {
-    if (!column.sortable) return null;
-    
-    return (
-      <div 
-        className="cursor-pointer flex items-center gap-1" 
-        onClick={() => handleSortChange(column.id as SortField)}
-      >
-        {column.label}
-        {getSortIcon(column.id)}
-      </div>
-    );
   };
 
   return (
@@ -893,26 +849,107 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                           </div>
                         )}
                         
-                        {column.sortable ? (
-                          getSortButton(column)
-                        ) : (
+                        {column.id === 'name' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('name')}
+                          >
+                            {column.label}
+                            {getSortIcon('name')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'application' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('application')}
+                          >
+                            {column.label}
+                            {getSortIcon('application')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'subApplication' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('subApplication')}
+                          >
+                            {column.label}
+                            {getSortIcon('subApplication')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'folder' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('folder')}
+                          >
+                            {column.label}
+                            {getSortIcon('folder')}
+                          </div>
+                        )}
+                        
+                        {column.id === 'orderDate' && (
+                          <div 
+                            className="cursor-pointer flex items-center gap-1" 
+                            onClick={() => handleSortChange('orderDate')}
+                          >
+                            {column.label}
+                            {getSortIcon('orderDate')}
+                          </div>
+                        )}
+                        
+                        {!['checkbox', 'name', 'application', 'subApplication', 'folder', 'orderDate'].includes(column.id) && (
                           <div>{column.label}</div>
                         )}
                         
-                        {column.filterable && getFilterDropdown(column)}
+                        {['name', 'application', 'subApplication', 'folder'].includes(column.id) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                {getColumnFilterIcon(column.id as keyof typeof columnFilters)}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <div className="p-2">
+                                <Input 
+                                  placeholder={`Filter ${column.label.toLowerCase()}`}
+                                  value={columnFilters[column.id as keyof typeof columnFilters]}
+                                  onChange={(e) => handleColumnFilter(column.id as keyof typeof columnFilters, e.target.value)}
+                                  className="h-8 mb-2"
+                                />
+                                <div className="flex justify-between mt-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleColumnFilter(column.id as keyof typeof columnFilters, '')}
+                                  >
+                                    Clear
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => document.body.click()} // close dropdown
+                                  >
+                                    Apply
+                                  </Button>
+                                </div>
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                       
                       {/* Column resize handle */}
                       {column.id !== 'checkbox' && (
-                        <div 
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize group-hover:bg-primary/50"
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-gray-400 cursor-col-resize"
                           onMouseDown={(e) => {
                             const startX = e.clientX;
                             const startWidth = column.width;
                             
-                            const handleMouseMove = (moveEvent: MouseEvent) => {
-                              const deltaX = moveEvent.clientX - startX;
-                              const newWidth = Math.max(5, startWidth + (deltaX / 10));
+                            const handleMouseMove = (e: MouseEvent) => {
+                              const diff = e.clientX - startX;
+                              const newWidth = Math.max(5, startWidth + (diff * 0.1));
                               handleResizeEnd(column.id, newWidth);
                             };
                             
@@ -931,23 +968,31 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredJobs.map(job => (
+                {filteredJobs.map((job) => (
                   <TableRow 
                     key={job.id}
                     className={cn(
-                      "cursor-pointer",
-                      selectedJobs.includes(job.id) && "bg-primary/10",
-                      selectedJob?.id === job.id && !selectedJobs.length && "bg-primary/10"
+                      "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
+                      selectedJob?.id === job.id ? "bg-muted" : "",
+                      job.isFixed ? "bg-green-50/50 dark:bg-green-900/10" : "",
+                      job.isBeingChecked ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""
                     )}
                     onClick={() => handleJobClick(job)}
                   >
-                    {getSortedColumns().filter(col => col.visible).map(column => (
-                      <TableCell key={`${job.id}-${column.id}`}>
+                    {getSortedColumns().filter(col => col.visible).map((column) => (
+                      <TableCell key={`${job.id}-${column.id}`} className="p-2">
                         {renderCellContent(job, column.id)}
                       </TableCell>
                     ))}
                   </TableRow>
                 ))}
+                {filteredJobs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={getSortedColumns().filter(col => col.visible).length} className="text-center py-8 text-gray-500">
+                      No failed jobs found with the applied filters.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -955,119 +1000,159 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       </Card>
       
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          {selectedJobs.length > 0 ? `Bulk Edit (${selectedJobs.length} jobs)` : 'Job Details'}
-        </h2>
-        
         {selectedJobs.length > 0 ? (
           <div className="space-y-4">
+            <h2 className="text-2xl font-semibold mb-4">Bulk Edit ({selectedJobs.length} jobs)</h2>
+            
             <div>
-              <label className="text-sm font-medium">Bulk Comment</label>
-              <Textarea 
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Comment for all selected jobs
+              </label>
+              <Textarea
                 placeholder="Add a comment for all selected jobs"
-                className="mt-1"
                 value={bulkComment}
                 onChange={(e) => setBulkComment(e.target.value)}
+                className="mb-2"
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium">Bulk Solution</label>
-              <Textarea 
-                placeholder="Add a solution for all selected jobs"
-                className="mt-1"
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Solution for all selected jobs
+              </label>
+              <Textarea
+                placeholder="Describe the solution applied to all jobs"
                 value={bulkSolution}
                 onChange={(e) => setBulkSolution(e.target.value)}
+                className="mb-4"
               />
             </div>
             
-            <div className="flex gap-2 mt-4">
-              <Button onClick={saveComment}>
-                Save Comments
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={markAsChecking}
-              >
-                <Clock className="h-4 w-4 mr-1" /> 
-                Mark as Checking
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={markAsFixed}
-              >
-                <CheckCircle className="h-4 w-4 mr-1" /> 
-                Mark as Fixed
-              </Button>
-            </div>
-          </div>
-        ) : selectedJob ? (
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">{selectedJob.name}</h3>
-              <div className="text-sm text-gray-500 mt-1">
-                {selectedJob.application} / {selectedJob.subApplication} / {selectedJob.folder}
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex gap-2 items-center mt-2">
-                {getStatusBadge(selectedJob)}
-                {getUserInfo(selectedJob)}
-              </div>
-              
-              <div className="text-sm mt-2">
-                <span className="font-medium">Error:</span> {selectedJob.errorMessage || 'N/A'}
-              </div>
-              
-              <div className="mt-4">
-                <label className="text-sm font-medium">Comment</label>
-                <Textarea 
-                  placeholder="Add a comment"
-                  className="mt-1"
-                  value={selectedJob.comment || ''}
-                  onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
-                />
-              </div>
-              
-              <div className="mt-4">
-                <label className="text-sm font-medium">Solution</label>
-                <Textarea 
-                  placeholder="Add a solution"
-                  className="mt-1"
-                  value={selectedJob.solution || ''}
-                  onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-2 mt-4">
-              <Button onClick={saveComment}>
-                Save Comment
-              </Button>
-              {!selectedJob.isBeingChecked && !selectedJob.isFixed && (
-                <Button 
-                  variant="secondary" 
+            <div className="flex justify-between">
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
                   onClick={markAsChecking}
+                  className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200"
                 >
-                  <Clock className="h-4 w-4 mr-1" /> 
-                  Mark as Checking
+                  <Clock className="h-4 w-4 mr-1" />
+                  Mark as checking
                 </Button>
-              )}
-              {!selectedJob.isFixed && (
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="outline"
                   onClick={markAsFixed}
+                  className="bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200"
                 >
-                  <CheckCircle className="h-4 w-4 mr-1" /> 
-                  Mark as Fixed
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Mark as fixed
                 </Button>
-              )}
+              </div>
+              <Button onClick={saveComment}>
+                Save changes
+              </Button>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t">
+              <Button variant="outline" size="sm" onClick={clearSelection} className="w-full">
+                Return to individual editing
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500">
-            Select a job to view details
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Job Details</h2>
+            {selectedJob ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium">{selectedJob.name}</h3>
+                  <p className="text-sm text-gray-500">ID: {selectedJob.id}</p>
+                  {selectedJob.application && (
+                    <p className="text-sm text-gray-500">Application: {selectedJob.application}</p>
+                  )}
+                  {selectedJob.subApplication && (
+                    <p className="text-sm text-gray-500">SubApplication: {selectedJob.subApplication}</p>
+                  )}
+                  {selectedJob.folder && (
+                    <p className="text-sm text-gray-500">Folder: {selectedJob.folder}</p>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedJob.startTime && (
+                    <div className="text-sm">
+                      <span className="font-medium">Start Time:</span>
+                      <p>{format(new Date(selectedJob.startTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                    </div>
+                  )}
+                  
+                  {selectedJob.endTime && (
+                    <div className="text-sm">
+                      <span className="font-medium">End Time:</span>
+                      <p>{format(new Date(selectedJob.endTime), "MMM dd, yyyy HH:mm:ss")}</p>
+                    </div>
+                  )}
+                </div>
+                
+                {selectedJob.errorMessage && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+                    <p className="font-medium text-red-600 dark:text-red-400">Error:</p>
+                    <p className="text-red-600 dark:text-red-400">{selectedJob.errorMessage}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Comment
+                  </label>
+                  <Textarea
+                    placeholder="Add a comment about the error"
+                    value={selectedJob.comment || ''}
+                    onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                    className="mb-2"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Solution
+                  </label>
+                  <Textarea
+                    placeholder="Describe the applied solution"
+                    value={selectedJob.solution || ''}
+                    onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                    className="mb-4"
+                  />
+                </div>
+                
+                <div className="flex justify-between">
+                  <div className="space-x-2">
+                    <Button
+                      variant={selectedJob.isBeingChecked ? "secondary" : "outline"}
+                      onClick={markAsChecking}
+                      className={selectedJob.isBeingChecked ? "bg-yellow-200 hover:bg-yellow-300 text-yellow-800 dark:bg-yellow-500/30 dark:text-yellow-200" : ""}
+                    >
+                      <Clock className="h-4 w-4 mr-1" />
+                      {selectedJob.isBeingChecked ? selectedJob.checkedBy ? `Being checked by ${selectedJob.checkedBy}` : "Being checked" : "Mark as checking"}
+                    </Button>
+                    <Button
+                      variant={selectedJob.isFixed ? "default" : "outline"}
+                      onClick={markAsFixed}
+                      className={selectedJob.isFixed ? "bg-green-200 hover:bg-green-300 text-green-800 dark:bg-green-500/30 dark:text-green-200" : ""}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      {selectedJob.isFixed ? selectedJob.fixedBy ? `Fixed by ${selectedJob.fixedBy}` : "Fixed" : "Mark as fixed"}
+                    </Button>
+                  </div>
+                  <Button onClick={saveComment}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-gray-500">
+                Select a job to view details
+              </div>
+            )}
           </div>
         )}
       </Card>
