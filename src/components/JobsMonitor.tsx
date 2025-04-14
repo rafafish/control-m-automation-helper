@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -201,10 +200,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     const failed = mockJobs.filter(job => job.status === 'failed');
     setFailedJobs(failed);
     setFilteredJobs(failed);
+    
+    applyFiltersAndSort(failed);
+    
+    console.log('Initialized with mock data:', mockJobs);
   }, []);
 
   useEffect(() => {
+    console.log('Setting up refresh interval:', refreshInterval);
     const intervalId = setInterval(() => {
+      console.log('Auto refresh triggered');
       fetchFailedJobs();
     }, refreshInterval);
     
@@ -212,10 +217,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   }, [refreshInterval]);
 
   useEffect(() => {
+    console.log('Filters or sort config changed, reapplying');
     applyFiltersAndSort();
-  }, [columnFilters, sortConfig]);
+  }, [filters, columnFilters, sortConfig, selectedDate]);
 
   const fetchFailedJobs = () => {
+    console.log('Fetching failed jobs...');
     const newJob: Job = { 
       id: Date.now().toString(), 
       name: `Job_${Math.floor(Math.random() * 1000)}`, 
@@ -228,9 +235,15 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       errorMessage: ['Database error', 'Network timeout', 'Invalid parameters', 'Authentication failed'][Math.floor(Math.random() * 4)]
     };
     
-    setJobs(prev => [...prev, newJob]);
-    setFailedJobs(prev => [...prev, newJob]);
-    applyFiltersAndSort([...failedJobs, newJob]);
+    const updatedJobs = [...jobs, newJob];
+    const updatedFailedJobs = [...failedJobs, newJob];
+    
+    setJobs(updatedJobs);
+    setFailedJobs(updatedFailedJobs);
+    
+    applyFiltersAndSort(updatedFailedJobs);
+    
+    console.log('New failed job added:', newJob);
     
     toast({
       title: "New failed job detected",
@@ -240,7 +253,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
-    let result = jobsToFilter;
+    console.log('Applying filters and sort to jobs:', jobsToFilter.length);
+    let result = [...jobsToFilter];
     
     if (columnFilters.name) {
       result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
@@ -302,6 +316,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
     
+    console.log('Filtered jobs count:', result.length);
     setFilteredJobs(result);
   };
 
@@ -526,6 +541,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   };
 
   const refreshJobs = () => {
+    console.log('Manual refresh triggered');
     fetchFailedJobs();
     toast({
       title: "Refreshing jobs",
@@ -658,19 +674,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  // Column resizing handler
   const handleResizeEnd = (columnId: string, newSize: number) => {
     setColumns(columns.map(col => 
       col.id === columnId ? { ...col, width: newSize } : col
     ));
   };
 
-  // Column drag start handler
   const handleDragStart = (columnId: string) => {
     setDraggedColumn(columnId);
   };
 
-  // Column drag over handler
   const handleDragOver = (e: React.DragEvent, columnId: string) => {
     e.preventDefault();
     if (draggedColumn && draggedColumn !== columnId) {
@@ -678,7 +691,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       const draggedIndex = updatedColumns.findIndex(col => col.id === draggedColumn);
       const targetIndex = updatedColumns.findIndex(col => col.id === columnId);
       
-      // Swap order values
       const draggedOrder = updatedColumns[draggedIndex].order;
       updatedColumns[draggedIndex].order = updatedColumns[targetIndex].order;
       updatedColumns[targetIndex].order = draggedOrder;
@@ -687,17 +699,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  // Column drag end handler
   const handleDragEnd = () => {
     setDraggedColumn(null);
   };
 
-  // Get sorted columns
   const getSortedColumns = () => {
     return [...columns].sort((a, b) => a.order - b.order);
   };
 
-  // Render the cell content based on column id
   const renderCellContent = (job: Job, columnId: string) => {
     switch (columnId) {
       case 'checkbox':
@@ -941,7 +950,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                           )}
                         </div>
                         
-                        {/* Column resize handle */}
                         {column.id !== 'checkbox' && (
                           <div
                             className="absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-gray-400 cursor-col-resize"
