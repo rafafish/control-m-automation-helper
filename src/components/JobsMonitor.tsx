@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -902,4 +903,174 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                       </div>
                       
                       {/* Column resize handle */}
-                      {column.id !== 'checkbox' &&
+                      {column.id !== 'checkbox' && (
+                        <div 
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize group-hover:bg-primary/50"
+                          onMouseDown={(e) => {
+                            const startX = e.clientX;
+                            const startWidth = column.width;
+                            
+                            const handleMouseMove = (moveEvent: MouseEvent) => {
+                              const deltaX = moveEvent.clientX - startX;
+                              const newWidth = Math.max(5, startWidth + (deltaX / 10));
+                              handleResizeEnd(column.id, newWidth);
+                            };
+                            
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                            };
+                            
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        />
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredJobs.map(job => (
+                  <TableRow 
+                    key={job.id}
+                    className={cn(
+                      "cursor-pointer",
+                      selectedJobs.includes(job.id) && "bg-primary/10",
+                      selectedJob?.id === job.id && !selectedJobs.length && "bg-primary/10"
+                    )}
+                    onClick={() => handleJobClick(job)}
+                  >
+                    {getSortedColumns().filter(col => col.visible).map(column => (
+                      <TableCell key={`${job.id}-${column.id}`}>
+                        {renderCellContent(job, column.id)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
+      </Card>
+      
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          {selectedJobs.length > 0 ? `Bulk Edit (${selectedJobs.length} jobs)` : 'Job Details'}
+        </h2>
+        
+        {selectedJobs.length > 0 ? (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Bulk Comment</label>
+              <Textarea 
+                placeholder="Add a comment for all selected jobs"
+                className="mt-1"
+                value={bulkComment}
+                onChange={(e) => setBulkComment(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Bulk Solution</label>
+              <Textarea 
+                placeholder="Add a solution for all selected jobs"
+                className="mt-1"
+                value={bulkSolution}
+                onChange={(e) => setBulkSolution(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveComment}>
+                Save Comments
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={markAsChecking}
+              >
+                <Clock className="h-4 w-4 mr-1" /> 
+                Mark as Checking
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={markAsFixed}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" /> 
+                Mark as Fixed
+              </Button>
+            </div>
+          </div>
+        ) : selectedJob ? (
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium">{selectedJob.name}</h3>
+              <div className="text-sm text-gray-500 mt-1">
+                {selectedJob.application} / {selectedJob.subApplication} / {selectedJob.folder}
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex gap-2 items-center mt-2">
+                {getStatusBadge(selectedJob)}
+                {getUserInfo(selectedJob)}
+              </div>
+              
+              <div className="text-sm mt-2">
+                <span className="font-medium">Error:</span> {selectedJob.errorMessage || 'N/A'}
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium">Comment</label>
+                <Textarea 
+                  placeholder="Add a comment"
+                  className="mt-1"
+                  value={selectedJob.comment || ''}
+                  onChange={(e) => setSelectedJob({...selectedJob, comment: e.target.value})}
+                />
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium">Solution</label>
+                <Textarea 
+                  placeholder="Add a solution"
+                  className="mt-1"
+                  value={selectedJob.solution || ''}
+                  onChange={(e) => setSelectedJob({...selectedJob, solution: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveComment}>
+                Save Comment
+              </Button>
+              {!selectedJob.isBeingChecked && !selectedJob.isFixed && (
+                <Button 
+                  variant="secondary" 
+                  onClick={markAsChecking}
+                >
+                  <Clock className="h-4 w-4 mr-1" /> 
+                  Mark as Checking
+                </Button>
+              )}
+              {!selectedJob.isFixed && (
+                <Button 
+                  variant="default" 
+                  onClick={markAsFixed}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" /> 
+                  Mark as Fixed
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            Select a job to view details
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
