@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -248,29 +247,23 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   const applyFiltersAndSort = (jobsToFilter = failedJobs) => {
     let result = [...jobsToFilter];
     
-    // Apply all column filters
     Object.entries(columnFilters).forEach(([key, value]) => {
       if (value) {
         result = result.filter(job => {
           if (key === 'status') {
-            // Special handling for status which isn't directly a string
             if (job.isFixed && value.toLowerCase().includes('fix')) return true;
             if (job.isBeingChecked && value.toLowerCase().includes('check')) return true;
             if (!job.isFixed && !job.isBeingChecked && value.toLowerCase().includes('fail')) return true;
             return false;
           } else if (key === 'assignedTo') {
-            // Special handling for assigned to
             if (job.fixedBy && job.fixedBy.toLowerCase().includes(value.toLowerCase())) return true;
             if (job.checkedBy && job.checkedBy.toLowerCase().includes(value.toLowerCase())) return true;
             return false;
           } else if (key === 'error') {
-            // Handle error field (maps to errorMessage)
             return job.errorMessage?.toLowerCase().includes(value.toLowerCase()) || false;
           } else if (key === 'orderDate') {
-            // Skip orderDate filtering here - handled separately
             return true;
           } else {
-            // Standard field filtering
             const jobValue = job[key as keyof Job];
             return jobValue && String(jobValue).toLowerCase().includes(value.toLowerCase());
           }
@@ -278,7 +271,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       }
     });
     
-    // Apply special filters
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -304,26 +296,21 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
     
-    // Apply sorting
     if (sortConfig.field) {
       result = [...result].sort((a, b) => {
         const aValue = a[sortConfig.field];
         const bValue = b[sortConfig.field];
         
-        // Special handling for dates
         if (sortConfig.field === 'orderDate' || sortConfig.field === 'startTime' || sortConfig.field === 'endTime') {
           const dateA = aValue ? new Date(aValue as string).getTime() : 0;
           const dateB = bValue ? new Date(bValue as string).getTime() : 0;
           return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
         } 
-        // Special handling for status
         else if (sortConfig.field === 'status') {
-          // Create a status value for sorting where fixed = 2, checking = 1, failed = 0
           const statusA = a.isFixed ? 2 : (a.isBeingChecked ? 1 : 0);
           const statusB = b.isFixed ? 2 : (b.isBeingChecked ? 1 : 0);
           return sortConfig.direction === 'asc' ? statusA - statusB : statusB - statusA;
         }
-        // Default string comparison
         else {
           const strA = aValue !== undefined ? String(aValue) : '';
           const strB = bValue !== undefined ? String(bValue) : '';
@@ -646,19 +633,16 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  // Column resizing handler
   const handleResizeEnd = (columnId: string, newSize: number) => {
     setColumns(columns.map(col => 
       col.id === columnId ? { ...col, width: newSize } : col
     ));
   };
 
-  // Column drag start handler
   const handleDragStart = (columnId: string) => {
     setDraggedColumn(columnId);
   };
 
-  // Column drag over handler
   const handleDragOver = (e: React.DragEvent, columnId: string) => {
     e.preventDefault();
     if (draggedColumn && draggedColumn !== columnId) {
@@ -666,7 +650,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       const draggedIndex = updatedColumns.findIndex(col => col.id === draggedColumn);
       const targetIndex = updatedColumns.findIndex(col => col.id === columnId);
       
-      // Swap order values
       const draggedOrder = updatedColumns[draggedIndex].order;
       updatedColumns[draggedIndex].order = updatedColumns[targetIndex].order;
       updatedColumns[targetIndex].order = draggedOrder;
@@ -675,17 +658,14 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  // Column drag end handler
   const handleDragEnd = () => {
     setDraggedColumn(null);
   };
 
-  // Get sorted columns
   const getSortedColumns = () => {
     return [...columns].sort((a, b) => a.order - b.order);
   };
 
-  // Render the cell content based on column id
   const renderCellContent = (job: Job, columnId: string) => {
     switch (columnId) {
       case 'checkbox':
@@ -717,7 +697,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     }
   };
 
-  // Get filter dropdown for a column
   const getFilterDropdown = (column: ColumnConfig) => {
     if (!column.filterable) return null;
     
@@ -757,7 +736,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     );
   };
 
-  // Get sort button for a column
   const getSortButton = (column: ColumnConfig) => {
     if (!column.sortable) return null;
     
@@ -902,7 +880,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                         {column.filterable && getFilterDropdown(column)}
                       </div>
                       
-                      {/* Column resize handle */}
                       {column.id !== 'checkbox' && (
                         <div 
                           className="absolute right-0 top-0 h-full w-1 cursor-col-resize group-hover:bg-primary/50"
