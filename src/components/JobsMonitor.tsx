@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent
+} from "@/components/ui/card";
+import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/card";
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -145,7 +152,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
     }
 
-    // Apply sorting after filtering
     if (sortConfig.key) {
       filtered = [...filtered].sort((a, b) => {
         const key = sortConfig.key as keyof Job;
@@ -387,9 +393,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   return (
     <div className="w-full">
       <Card className="p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold">Failed Jobs Monitor</h2>
+        <CardHeader>
+          <CardTitle>Failed Jobs Monitor</CardTitle>
+          <CardDescription>Monitor failed jobs here.</CardDescription>
+        </CardHeader>
+        
+        <CardFooter>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={refreshJobs}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
@@ -403,155 +412,154 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export
             </Button>
           </div>
-        </div>
+        </CardFooter>
         
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button 
-              variant={filters.showFixed ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
-            >
-              {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
-            </Button>
-            
-            <Button 
-              variant={filters.todayOnly ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
-            >
-              <CalendarIcon className="h-4 w-4 mr-1" />
-              {filters.todayOnly ? "All Dates" : "Today Only"}
-            </Button>
-            
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={selectedDate ? "default" : "outline"}
-                  size="sm"
-                  className={cn(
-                    selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
-                  )}
-                >
-                  <CalendarIcon className="h-4 w-4 mr-1" />
-                  {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  className="p-3"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          
-          <div className="flex-1 w-full sm:w-auto flex flex-wrap items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
-            <div className="flex items-center gap-2">
-              <Checkbox 
-                id="select-all" 
-                checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
-                onCheckedChange={selectAllJobs}
-              />
-              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer whitespace-nowrap">
-                Select all
-              </label>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant={filters.showFixed ? "default" : "outline"} 
+                size="sm"
+                onClick={() => handleFilterChange('showFixed', !filters.showFixed)}
+              >
+                {filters.showFixed ? "Hide Fixed" : "Show Fixed"}
+              </Button>
+              
+              <Button 
+                variant={filters.todayOnly ? "default" : "outline"} 
+                size="sm"
+                onClick={() => handleFilterChange('todayOnly', !filters.todayOnly)}
+              >
+                <CalendarIcon className="h-4 w-4 mr-1" />
+                {filters.todayOnly ? "All Dates" : "Today Only"}
+              </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={selectedDate ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      selectedDate && "bg-primary text-primary-foreground hover:bg-primary/90"
+                    )}
+                  >
+                    <CalendarIcon className="h-4 w-4 mr-1" />
+                    {selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Select Date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    className="p-3"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             
+            <div className="flex-1 w-full sm:w-auto flex flex-wrap items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="select-all" 
+                  checked={filteredJobs.length > 0 && selectedJobs.length === filteredJobs.length}
+                  onCheckedChange={selectAllJobs}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                  Select all
+                </label>
+              </div>
+              
+              {selectedJobs.length > 0 && (
+                <Button size="sm" variant="outline" onClick={clearSelection}>
+                  Clear selection ({selectedJobs.length})
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span className="text-sm text-gray-500">
+              Showing {filteredJobs.length} of {failedJobs.length} failed jobs
+            </span>
             {selectedJobs.length > 0 && (
-              <Button size="sm" variant="outline" onClick={clearSelection}>
-                Clear selection ({selectedJobs.length})
-              </Button>
+              <span className="text-sm text-primary font-medium">
+                {selectedJobs.length} jobs selected
+              </span>
             )}
           </div>
-        </div>
-        
-        {/* Status counts */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <span className="text-sm text-gray-500">
-            Showing {filteredJobs.length} of {failedJobs.length} failed jobs
-          </span>
-          {selectedJobs.length > 0 && (
-            <span className="text-sm text-primary font-medium">
-              {selectedJobs.length} jobs selected
-            </span>
-          )}
-        </div>
-        
-        {/* Table */}
-        <ScrollArea className="h-[calc(100vh-20rem)] w-full border rounded-md" orientation="both">
-          <div className="min-w-max">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
-                <TableRow>
-                  {getSortedColumns().filter(col => col.visible).map((column) => (
-                    <TableHead 
-                      key={column.id}
-                      style={{ 
-                        width: `${column.width}%`,
-                        minWidth: column.id === 'checkbox' ? '40px' : '120px'
-                      }}
-                      className="relative group"
-                      draggable={column.id !== 'checkbox'}
-                      onDragStart={() => handleDragStart(column.id)}
-                      onDragOver={(e) => handleDragOver(e, column.id)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <div className="flex items-center gap-1">
+          
+          <ScrollArea className="h-[calc(100vh-20rem)] w-full border rounded-md" orientation="both">
+            <div className="min-w-max">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    {getSortedColumns().filter(col => col.visible).map((column) => (
+                      <TableHead 
+                        key={column.id}
+                        style={{ 
+                          width: `${column.width}%`,
+                          minWidth: column.id === 'checkbox' ? '40px' : '120px'
+                        }}
+                        className="relative group"
+                        draggable={column.id !== 'checkbox'}
+                        onDragStart={() => handleDragStart(column.id)}
+                        onDragOver={(e) => handleDragOver(e, column.id)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <div className="flex items-center gap-1">
+                          {column.id !== 'checkbox' && (
+                            <div 
+                              className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Drag to reorder column"
+                            >
+                              <GripHorizontal className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
+                          
+                          {column.sortable ? (
+                            getSortButton(column)
+                          ) : (
+                            <div>{column.label}</div>
+                          )}
+                          
+                          {column.filterable && getFilterDropdown(column)}
+                        </div>
+                        
                         {column.id !== 'checkbox' && (
-                          <div 
-                            className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Drag to reorder column"
-                          >
-                            <GripHorizontal className="h-4 w-4 text-gray-400" />
-                          </div>
+                          <ResizableHandle 
+                            onResizeEnd={(size) => handleResizeEnd(column.id, size)}
+                          />
                         )}
-                        
-                        {column.sortable ? (
-                          getSortButton(column)
-                        ) : (
-                          <div>{column.label}</div>
-                        )}
-                        
-                        {column.filterable && getFilterDropdown(column)}
-                      </div>
-                      
-                      {column.id !== 'checkbox' && (
-                        <ResizableHandle 
-                          onResizeEnd={(size) => handleResizeEnd(column.id, size)}
-                        />
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredJobs.map((job) => (
-                  <TableRow 
-                    key={job.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleJobClick(job)}
-                  >
-                    {getSortedColumns()
-                      .filter(col => col.visible)
-                      .map((column) => (
-                        <TableCell 
-                          key={column.id}
-                          className="overflow-hidden text-ellipsis whitespace-nowrap"
-                        >
-                          {renderCellContent(job, column.id)}
-                        </TableCell>
+                      </TableHead>
                     ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </ScrollArea>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
+                    <TableRow 
+                      key={job.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleJobClick(job)}
+                    >
+                      {getSortedColumns()
+                        .filter(col => col.visible)
+                        .map((column) => (
+                          <TableCell 
+                            key={column.id}
+                            className="overflow-hidden text-ellipsis whitespace-nowrap"
+                          >
+                            {renderCellContent(job, column.id)}
+                          </TableCell>
+                        ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </CardContent>
       </Card>
     </div>
   );
