@@ -508,6 +508,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                         onDragStart={() => handleDragStart(column.id)}
                         onDragOver={(e) => handleDragOver(e, column.id)}
                         onDragEnd={handleDragEnd}
+                        data-column-id={column.id}
                       >
                         <div className="flex items-center gap-1">
                           {column.id !== 'checkbox' && (
