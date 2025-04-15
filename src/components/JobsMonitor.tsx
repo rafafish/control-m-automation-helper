@@ -78,7 +78,7 @@ interface JobsMonitorProps {
   apiKey: string;
 }
 
-type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate';
+type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate' | 'status' | 'error';
 type SortDirection = 'asc' | 'desc';
 
 type ColumnConfig = {
@@ -116,6 +116,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     application: '',
     subApplication: '',
     folder: '',
+    status: '',
+    error: '',
+    orderDate: '',
   });
   const [columns, setColumns] = useState<ColumnConfig[]>([
     { id: 'checkbox', label: '', width: 5, visible: true, order: 0 },
@@ -272,6 +275,17 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
     }
     
+    if (columnFilters.status) {
+      result = result.filter(job => {
+        const status = job.isFixed ? 'fixed' : job.isBeingChecked ? 'checking' : 'failed';
+        return status.includes(columnFilters.status.toLowerCase());
+      });
+    }
+    
+    if (columnFilters.error) {
+      result = result.filter(job => job.errorMessage?.toLowerCase().includes(columnFilters.error.toLowerCase()));
+    }
+    
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -299,19 +313,25 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     if (sortConfig.field) {
       result = [...result].sort((a, b) => {
-        const aValue = a[sortConfig.field] || '';
-        const bValue = b[sortConfig.field] || '';
-        
         if (sortConfig.field === 'orderDate') {
-          const dateA = aValue ? new Date(aValue).getTime() : 0;
-          const dateB = bValue ? new Date(bValue).getTime() : 0;
+          const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+          const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
           return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        } else if (sortConfig.field === 'status') {
+          const getStatusValue = (job: Job) => {
+            if (job.isFixed) return 2;
+            if (job.isBeingChecked) return 1;
+            return 0;
+          };
+          const valueA = getStatusValue(a);
+          const valueB = getStatusValue(b);
+          return sortConfig.direction === 'asc' ? valueA - valueB : valueB - valueA;
         } else {
-          if (sortConfig.direction === 'asc') {
-            return String(aValue).localeCompare(String(bValue));
-          } else {
-            return String(bValue).localeCompare(String(aValue));
-          }
+          const aValue = a[sortConfig.field] || '';
+          const bValue = b[sortConfig.field] || '';
+          return sortConfig.direction === 'asc' 
+            ? String(aValue).localeCompare(String(bValue))
+            : String(bValue).localeCompare(String(aValue));
         }
       });
     }
@@ -730,7 +750,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       case 'assignedTo':
         return getUserInfo(job);
       case 'orderDate':
-        return job.orderDate ? format(new Date(job.orderDate), "dd/MM HH:mm") : 'N/A';
+        return job.orderDate ? format(new Date(job.orderDate), "yyyy-MM-dd") : 'N/A';
       case 'error':
         return job.errorMessage || 'N/A';
       default:
@@ -860,61 +880,21 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                             </div>
                           )}
                           
-                          {column.id === 'name' && (
+                          {column.id !== 'checkbox' && column.id !== 'assignedTo' && (
                             <div 
                               className="cursor-pointer flex items-center gap-1" 
-                              onClick={() => handleSortChange('name')}
+                              onClick={() => handleSortChange(column.id as SortField)}
                             >
                               {column.label}
-                              {getSortIcon('name')}
+                              {getSortIcon(column.id as SortField)}
                             </div>
                           )}
                           
-                          {column.id === 'application' && (
-                            <div 
-                              className="cursor-pointer flex items-center gap-1" 
-                              onClick={() => handleSortChange('application')}
-                            >
-                              {column.label}
-                              {getSortIcon('application')}
-                            </div>
-                          )}
-                          
-                          {column.id === 'subApplication' && (
-                            <div 
-                              className="cursor-pointer flex items-center gap-1" 
-                              onClick={() => handleSortChange('subApplication')}
-                            >
-                              {column.label}
-                              {getSortIcon('subApplication')}
-                            </div>
-                          )}
-                          
-                          {column.id === 'folder' && (
-                            <div 
-                              className="cursor-pointer flex items-center gap-1" 
-                              onClick={() => handleSortChange('folder')}
-                            >
-                              {column.label}
-                              {getSortIcon('folder')}
-                            </div>
-                          )}
-                          
-                          {column.id === 'orderDate' && (
-                            <div 
-                              className="cursor-pointer flex items-center gap-1" 
-                              onClick={() => handleSortChange('orderDate')}
-                            >
-                              {column.label}
-                              {getSortIcon('orderDate')}
-                            </div>
-                          )}
-                          
-                          {!['checkbox', 'name', 'application', 'subApplication', 'folder', 'orderDate'].includes(column.id) && (
+                          {column.id === 'assignedTo' && (
                             <div>{column.label}</div>
                           )}
                           
-                          {['name', 'application', 'subApplication', 'folder'].includes(column.id) && (
+                          {['name', 'application', 'subApplication', 'folder', 'status', 'error'].includes(column.id) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
