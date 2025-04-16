@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +79,7 @@ interface JobsMonitorProps {
   apiKey: string;
 }
 
-type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate' | 'status' | 'error';
+type SortField = 'name' | 'application' | 'subApplication' | 'folder' | 'orderDate' | 'status' | 'error' | 'assignedTo';
 type SortDirection = 'asc' | 'desc';
 
 type ColumnConfig = {
@@ -119,6 +120,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     status: '',
     error: '',
     orderDate: '',
+    assignedTo: '',
   });
   const [columns, setColumns] = useState<ColumnConfig[]>([
     { id: 'checkbox', label: '', width: 5, visible: true, order: 0 },
@@ -286,6 +288,25 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       result = result.filter(job => job.errorMessage?.toLowerCase().includes(columnFilters.error.toLowerCase()));
     }
     
+    if (columnFilters.orderDate) {
+      result = result.filter(job => {
+        if (!job.orderDate) return false;
+        const jobDate = format(new Date(job.orderDate), "yyyy-MM-dd");
+        return jobDate.includes(columnFilters.orderDate);
+      });
+    }
+    
+    if (columnFilters.assignedTo) {
+      result = result.filter(job => {
+        if (job.isFixed && job.fixedBy) {
+          return job.fixedBy.toLowerCase().includes(columnFilters.assignedTo.toLowerCase());
+        } else if (job.isBeingChecked && job.checkedBy) {
+          return job.checkedBy.toLowerCase().includes(columnFilters.assignedTo.toLowerCase());
+        }
+        return false;
+      });
+    }
+    
     if (!filters.showFixed) {
       result = result.filter(job => !job.isFixed);
     }
@@ -326,6 +347,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
           const valueA = getStatusValue(a);
           const valueB = getStatusValue(b);
           return sortConfig.direction === 'asc' ? valueA - valueB : valueB - valueA;
+        } else if (sortConfig.field === 'assignedTo') {
+          const valueA = a.isFixed ? a.fixedBy || '' : a.isBeingChecked ? a.checkedBy || '' : '';
+          const valueB = b.isFixed ? b.fixedBy || '' : b.isBeingChecked ? b.checkedBy || '' : '';
+          return sortConfig.direction === 'asc' 
+            ? String(valueA).localeCompare(String(valueB))
+            : String(valueB).localeCompare(String(valueA));
         } else {
           const aValue = a[sortConfig.field] || '';
           const bValue = b[sortConfig.field] || '';
@@ -348,50 +375,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
     
-    let result = failedJobs;
-    
-    if (columnFilters.name) {
-      result = result.filter(job => job.name.toLowerCase().includes(columnFilters.name.toLowerCase()));
-    }
-    
-    if (columnFilters.application) {
-      result = result.filter(job => job.application?.toLowerCase().includes(columnFilters.application.toLowerCase()));
-    }
-    
-    if (columnFilters.subApplication) {
-      result = result.filter(job => job.subApplication?.toLowerCase().includes(columnFilters.subApplication.toLowerCase()));
-    }
-    
-    if (columnFilters.folder) {
-      result = result.filter(job => job.folder?.toLowerCase().includes(columnFilters.folder.toLowerCase()));
-    }
-    
-    if (!newFilters.showFixed) {
-      result = result.filter(job => !job.isFixed);
-    }
-    
-    if (newFilters.todayOnly) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      result = result.filter(job => {
-        if (!job.orderDate) return false;
-        const jobDate = new Date(job.orderDate);
-        return jobDate >= today;
-      });
-    } else if (selectedDate) {
-      const filterDate = new Date(selectedDate);
-      filterDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(filterDate);
-      nextDay.setDate(filterDate.getDate() + 1);
-      
-      result = result.filter(job => {
-        if (!job.orderDate) return false;
-        const jobDate = new Date(job.orderDate);
-        return jobDate >= filterDate && jobDate < nextDay;
-      });
-    }
-    
-    setFilteredJobs(result);
+    applyFiltersAndSort();
   };
 
   const handleColumnFilter = (field: keyof typeof columnFilters, value: string) => {
@@ -578,7 +562,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         Application: job.application || 'N/A',
         SubApplication: job.subApplication || 'N/A',
         Folder: job.folder || 'N/A',
-        OrderDate: job.orderDate ? new Date(job.orderDate).toLocaleString() : 'N/A',
+        OrderDate: job.orderDate ? format(new Date(job.orderDate), "yyyy-MM-dd") : 'N/A',
         StartTime: job.startTime ? new Date(job.startTime).toLocaleString() : 'N/A',
         EndTime: job.endTime ? new Date(job.endTime).toLocaleString() : 'N/A',
         Error: job.errorMessage || 'N/A',
@@ -683,7 +667,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       return null;
     }
     
-    if (field === 'name' || field === 'application' || field === 'subApplication' || field === 'folder') {
+    if (field === 'name' || field === 'application' || field === 'subApplication' || field === 'folder' || field === 'assignedTo') {
       return sortConfig.direction === 'asc' ? 
         <ArrowUpAZ className="h-3 w-3" /> : 
         <ArrowDownAZ className="h-3 w-3" />;
@@ -880,7 +864,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                             </div>
                           )}
                           
-                          {column.id !== 'checkbox' && column.id !== 'assignedTo' && (
+                          {column.id !== 'checkbox' && (
                             <div 
                               className="cursor-pointer flex items-center gap-1" 
                               onClick={() => handleSortChange(column.id as SortField)}
@@ -890,11 +874,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                             </div>
                           )}
                           
-                          {column.id === 'assignedTo' && (
-                            <div>{column.label}</div>
-                          )}
-                          
-                          {['name', 'application', 'subApplication', 'folder', 'status', 'error'].includes(column.id) && (
+                          {column.id !== 'checkbox' && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
@@ -905,7 +885,7 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
                                 <div className="p-2">
                                   <Input 
                                     placeholder={`Filter ${column.label.toLowerCase()}`}
-                                    value={columnFilters[column.id as keyof typeof columnFilters]}
+                                    value={columnFilters[column.id as keyof typeof columnFilters] || ''}
                                     onChange={(e) => handleColumnFilter(column.id as keyof typeof columnFilters, e.target.value)}
                                     className="h-8 mb-2"
                                   />
