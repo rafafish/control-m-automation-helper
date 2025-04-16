@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -124,12 +123,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   });
   const [columns, setColumns] = useState<ColumnConfig[]>([
     { id: 'checkbox', label: '', width: 5, visible: true, order: 0 },
-    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 1 },
-    { id: 'application', label: 'Application', width: 15, visible: true, order: 2 },
-    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 3 },
-    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 4 },
-    { id: 'status', label: 'Status', width: 10, visible: true, order: 5 },
-    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 6 },
+    { id: 'status', label: 'Status', width: 10, visible: true, order: 1 },
+    { id: 'assignedTo', label: 'Assigned To', width: 10, visible: true, order: 2 },
+    { id: 'name', label: 'Job Name', width: 15, visible: true, order: 3 },
+    { id: 'application', label: 'Application', width: 15, visible: true, order: 4 },
+    { id: 'subApplication', label: 'SubApplication', width: 15, visible: true, order: 5 },
+    { id: 'folder', label: 'Folder Name', width: 15, visible: true, order: 6 },
     { id: 'orderDate', label: 'Order Date', width: 10, visible: true, order: 7 },
     { id: 'error', label: 'Error', width: 20, visible: true, order: 8 },
   ]);
