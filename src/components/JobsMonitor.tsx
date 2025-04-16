@@ -136,7 +136,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   
   const currentUser = "John Doe";
 
-  // Function to generate mock data
   const generateMockData = () => {
     const mockJobs: Job[] = [
       { 
@@ -201,7 +200,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       },
     ];
     
-    // Generate a few more random jobs for initial load
     for (let i = 0; i < 3; i++) {
       const newJob: Job = { 
         id: `initial-${Date.now()}-${i}`, 
@@ -220,7 +218,6 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     return mockJobs;
   };
 
-  // Initialize with mock data on component mount
   useEffect(() => {
     console.log('Initializing job monitor with mock data');
     const mockJobs = generateMockData();
@@ -234,11 +231,9 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     
     console.log('Initialized with mock data:', mockJobs);
     
-    // Simulate new failed jobs coming in periodically
-    const initialJobCount = mockJobs.length;
     toast({
       title: "Jobs loaded",
-      description: `Loaded ${failed.length} failed jobs out of ${initialJobCount} total jobs`,
+      description: `Loaded ${failed.length} failed jobs out of ${mockJobs.length} total jobs`,
     });
   }, []);
 
@@ -462,13 +457,12 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
         description: `Comments updated for ${selectedJobs.length} jobs`,
       });
     } else if (selectedJob) {
-      setFailedJobs(prev => 
-        prev.map(job => 
-          job.id === selectedJob.id ? selectedJob : job
-        )
+      const updatedJobs = failedJobs.map(job => 
+        job.id === selectedJob.id ? selectedJob : job
       );
       
-      applyFiltersAndSort();
+      setFailedJobs(updatedJobs);
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Comment saved",
@@ -495,6 +489,21 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
       
       setFailedJobs(updatedJobs);
+      setFilteredJobs(prevFilteredJobs => 
+        prevFilteredJobs.map(job => {
+          if (selectedJobs.includes(job.id)) {
+            return {
+              ...job,
+              isBeingChecked: true,
+              comment: bulkComment || job.comment,
+              solution: bulkSolution || job.solution,
+              checkedBy: currentUser
+            };
+          }
+          return job;
+        })
+      );
+      
       applyFiltersAndSort(updatedJobs);
       
       toast({
@@ -509,13 +518,18 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       };
       setSelectedJob(updatedJob);
       
-      setFailedJobs(prev => 
-        prev.map(job => 
+      const updatedJobs = failedJobs.map(job => 
+        job.id === updatedJob.id ? updatedJob : job
+      );
+      
+      setFailedJobs(updatedJobs);
+      setFilteredJobs(prevFilteredJobs => 
+        prevFilteredJobs.map(job => 
           job.id === updatedJob.id ? updatedJob : job
         )
       );
       
-      applyFiltersAndSort();
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Status updated",
@@ -544,6 +558,23 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       });
       
       setFailedJobs(updatedJobs);
+      setFilteredJobs(prevFilteredJobs => 
+        prevFilteredJobs.map(job => {
+          if (selectedJobs.includes(job.id)) {
+            return {
+              ...job,
+              isFixed: true,
+              isBeingChecked: false,
+              comment: bulkComment || job.comment,
+              solution: bulkSolution || job.solution,
+              fixedBy: currentUser,
+              checkedBy: job.checkedBy
+            };
+          }
+          return job;
+        })
+      );
+      
       applyFiltersAndSort(updatedJobs);
       
       toast({
@@ -560,13 +591,18 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       };
       setSelectedJob(updatedJob);
       
-      setFailedJobs(prev => 
-        prev.map(job => 
+      const updatedJobs = failedJobs.map(job => 
+        job.id === updatedJob.id ? updatedJob : job
+      );
+      
+      setFailedJobs(updatedJobs);
+      setFilteredJobs(prevFilteredJobs => 
+        prevFilteredJobs.map(job => 
           job.id === updatedJob.id ? updatedJob : job
         )
       );
       
-      applyFiltersAndSort();
+      applyFiltersAndSort(updatedJobs);
       
       toast({
         title: "Status updated",
