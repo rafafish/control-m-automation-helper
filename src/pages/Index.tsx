@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,15 @@ import JobsMonitor from '@/components/JobsMonitor';
 import Stats from '@/components/Stats';
 
 export default function Index() {
-  const [apiEndpoint, setApiEndpoint] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [apiEndpoint, setApiEndpoint] = useState('https://control-m-demo.example.com');
+  const [apiKey, setApiKey] = useState('demo-api-key');
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
+
+  // Auto-connect on component mount
+  useEffect(() => {
+    handleConnect();
+  }, []);
 
   const handleConnect = async () => {
     if (!apiEndpoint || !apiKey) {
