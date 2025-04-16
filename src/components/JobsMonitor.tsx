@@ -137,7 +137,8 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
   
   const currentUser = "John Doe";
 
-  useEffect(() => {
+  // Function to generate mock data
+  const generateMockData = () => {
     const mockJobs: Job[] = [
       { 
         id: '1', 
@@ -201,6 +202,30 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
       },
     ];
     
+    // Generate a few more random jobs for initial load
+    for (let i = 0; i < 3; i++) {
+      const newJob: Job = { 
+        id: `initial-${Date.now()}-${i}`, 
+        name: `Job_${Math.floor(Math.random() * 1000)}`, 
+        status: 'failed', 
+        application: ['Finance', 'IT', 'HR', 'Sales'][Math.floor(Math.random() * 4)], 
+        subApplication: ['Reporting', 'Processing', 'Backup', 'Analysis'][Math.floor(Math.random() * 4)], 
+        folder: ['Daily_Jobs', 'Weekly_Jobs', 'Monthly_Jobs'][Math.floor(Math.random() * 3)], 
+        startTime: new Date().toISOString(),
+        orderDate: new Date().toISOString(),
+        errorMessage: ['Database error', 'Network timeout', 'Invalid parameters', 'Authentication failed'][Math.floor(Math.random() * 4)]
+      };
+      mockJobs.push(newJob);
+    }
+    
+    return mockJobs;
+  };
+
+  // Initialize with mock data on component mount
+  useEffect(() => {
+    console.log('Initializing job monitor with mock data');
+    const mockJobs = generateMockData();
+    
     setJobs(mockJobs);
     const failed = mockJobs.filter(job => job.status === 'failed');
     setFailedJobs(failed);
@@ -209,6 +234,13 @@ export default function JobsMonitor({ endpoint, apiKey }: JobsMonitorProps) {
     applyFiltersAndSort(failed);
     
     console.log('Initialized with mock data:', mockJobs);
+    
+    // Simulate new failed jobs coming in periodically
+    const initialJobCount = mockJobs.length;
+    toast({
+      title: "Jobs loaded",
+      description: `Loaded ${failed.length} failed jobs out of ${initialJobCount} total jobs`,
+    });
   }, []);
 
   useEffect(() => {
